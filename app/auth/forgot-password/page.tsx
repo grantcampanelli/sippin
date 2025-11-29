@@ -1,4 +1,4 @@
-import { Container, Title, Paper } from '@mantine/core'
+import { Container, Title, Paper, Box } from '@mantine/core'
 import { ForgotPasswordForm } from '@/components/auth/ForgotPasswordForm'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -12,14 +12,25 @@ export default async function ForgotPasswordPage() {
   }
 
   return (
-    <Container size={420} my={40}>
-      <Title ta="center" mb="xl">
-        Forgot Password
-      </Title>
-      <Paper withBorder shadow="md" p={30} radius="md">
-        <ForgotPasswordForm />
-      </Paper>
-    </Container>
+    <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center' }}>
+      <Container size={420} py={40}>
+        <Title ta="center" mb="xl" style={{ color: 'var(--color-burgundy)' }}>
+          Forgot Password
+        </Title>
+        <Paper 
+          withBorder 
+          shadow="lg" 
+          p={40} 
+          radius="md"
+          style={{ 
+            borderColor: 'var(--color-beige)',
+            background: 'white'
+          }}
+        >
+          <ForgotPasswordForm />
+        </Paper>
+      </Container>
+    </Box>
   )
 }
 

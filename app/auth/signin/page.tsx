@@ -1,4 +1,4 @@
-import { Container, Title, Paper, Stack, Button, Divider, Alert } from '@mantine/core'
+import { Container, Title, Paper, Stack, Button, Divider, Alert, Box } from '@mantine/core'
 import { SignInForm } from '@/components/auth/SignInForm'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -19,28 +19,43 @@ export default async function SignInPage({
   const passwordReset = params.passwordReset === 'true'
 
   return (
-    <Container size={420} my={40}>
-      <Title ta="center" mb="xl">
-        Sign In
-      </Title>
-      <Paper withBorder shadow="md" p={30} radius="md">
-        {passwordReset && (
-          <Alert color="green" mb="md">
-            Your password has been reset successfully. Please sign in with your new password.
-          </Alert>
-        )}
-        <SignInForm />
-        <Divider label="Or continue with" labelPosition="center" my="lg" />
-        <Button
-          component="a"
-          href="/api/auth/signin/google"
-          fullWidth
-          variant="outline"
+    <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center' }}>
+      <Container size={420} py={40}>
+        <Title ta="center" mb="xl" style={{ color: 'var(--color-burgundy)' }}>
+          Sign In
+        </Title>
+        <Paper 
+          withBorder 
+          shadow="lg" 
+          p={40} 
+          radius="md"
+          style={{ 
+            borderColor: 'var(--color-beige)',
+            background: 'white'
+          }}
         >
-          Sign in with Google
-        </Button>
-      </Paper>
-    </Container>
+          {passwordReset && (
+            <Alert color="green" mb="md" radius="md">
+              Your password has been reset successfully. Please sign in with your new password.
+            </Alert>
+          )}
+          <SignInForm />
+          <Divider label="Or continue with" labelPosition="center" my="lg" />
+          <Button
+            component="a"
+            href="/api/auth/signin/google"
+            fullWidth
+            variant="outline"
+            style={{ 
+              borderColor: 'var(--color-wine)',
+              color: 'var(--color-wine)'
+            }}
+          >
+            Sign in with Google
+          </Button>
+        </Paper>
+      </Container>
+    </Box>
   )
 }
 

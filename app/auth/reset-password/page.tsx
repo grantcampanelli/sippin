@@ -1,4 +1,4 @@
-import { Container, Title, Paper, Alert } from '@mantine/core'
+import { Container, Title, Paper, Alert, Box } from '@mantine/core'
 import { ResetPasswordForm } from '@/components/auth/ResetPasswordForm'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -21,16 +21,27 @@ export default async function ResetPasswordPage({
 
   if (!token || !email) {
     return (
-      <Container size={420} my={40}>
-        <Title ta="center" mb="xl">
-          Reset Password
-        </Title>
-        <Paper withBorder shadow="md" p={30} radius="md">
-          <Alert color="red" title="Invalid Link">
-            The password reset link is invalid or missing required parameters.
-          </Alert>
-        </Paper>
-      </Container>
+      <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center' }}>
+        <Container size={420} py={40}>
+          <Title ta="center" mb="xl" style={{ color: 'var(--color-burgundy)' }}>
+            Reset Password
+          </Title>
+          <Paper 
+            withBorder 
+            shadow="lg" 
+            p={40} 
+            radius="md"
+            style={{ 
+              borderColor: 'var(--color-beige)',
+              background: 'white'
+            }}
+          >
+            <Alert color="red" title="Invalid Link">
+              The password reset link is invalid or missing required parameters.
+            </Alert>
+          </Paper>
+        </Container>
+      </Box>
     )
   }
 
@@ -46,28 +57,50 @@ export default async function ResetPasswordPage({
 
   if (!verificationToken || verificationToken.expires < new Date()) {
     return (
-      <Container size={420} my={40}>
-        <Title ta="center" mb="xl">
-          Reset Password
-        </Title>
-        <Paper withBorder shadow="md" p={30} radius="md">
-          <Alert color="red" title="Invalid or Expired Link">
-            The password reset link is invalid or has expired. Please request a new one.
-          </Alert>
-        </Paper>
-      </Container>
+      <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center' }}>
+        <Container size={420} py={40}>
+          <Title ta="center" mb="xl" style={{ color: 'var(--color-burgundy)' }}>
+            Reset Password
+          </Title>
+          <Paper 
+            withBorder 
+            shadow="lg" 
+            p={40} 
+            radius="md"
+            style={{ 
+              borderColor: 'var(--color-beige)',
+              background: 'white'
+            }}
+          >
+            <Alert color="red" title="Invalid or Expired Link">
+              The password reset link is invalid or has expired. Please request a new one.
+            </Alert>
+          </Paper>
+        </Container>
+      </Box>
     )
   }
 
   return (
-    <Container size={420} my={40}>
-      <Title ta="center" mb="xl">
-        Reset Password
-      </Title>
-      <Paper withBorder shadow="md" p={30} radius="md">
-        <ResetPasswordForm token={token} email={email} />
-      </Paper>
-    </Container>
+    <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center' }}>
+      <Container size={420} py={40}>
+        <Title ta="center" mb="xl" style={{ color: 'var(--color-burgundy)' }}>
+          Reset Password
+        </Title>
+        <Paper 
+          withBorder 
+          shadow="lg" 
+          p={40} 
+          radius="md"
+          style={{ 
+            borderColor: 'var(--color-beige)',
+            background: 'white'
+          }}
+        >
+          <ResetPasswordForm token={token} email={email} />
+        </Paper>
+      </Container>
+    </Box>
   )
 }
 

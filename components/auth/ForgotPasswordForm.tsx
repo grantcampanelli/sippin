@@ -56,7 +56,7 @@ export function ForgotPasswordForm() {
           Please check your email.
         </Alert>
         <Text size="sm" c="dimmed" ta="center">
-          <Link href="/auth/signin" style={{ textDecoration: 'none' }}>
+          <Link href="/auth/signin" style={{ textDecoration: 'none', color: 'var(--color-wine)' }}>
             Back to Sign In
           </Link>
         </Text>
@@ -77,11 +77,20 @@ export function ForgotPasswordForm() {
           required
           {...form.getInputProps('email')}
         />
-        <Button type="submit" fullWidth loading={loading}>
+        <Button 
+          type="submit" 
+          fullWidth 
+          loading={loading}
+          size="md"
+          style={{ 
+            background: 'var(--gradient-wine)',
+            color: 'white'
+          }}
+        >
           Send Reset Link
         </Button>
         <Text size="sm" c="dimmed" ta="center">
-          <Link href="/auth/signin" style={{ textDecoration: 'none' }}>
+          <Link href="/auth/signin" style={{ textDecoration: 'none', color: 'var(--color-wine)' }}>
             Back to Sign In
           </Link>
         </Text>

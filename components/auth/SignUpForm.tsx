@@ -84,7 +84,16 @@ export function SignUpForm() {
           required
           {...form.getInputProps('confirmPassword')}
         />
-        <Button type="submit" fullWidth loading={loading}>
+        <Button 
+          type="submit" 
+          fullWidth 
+          loading={loading}
+          size="md"
+          style={{ 
+            background: 'var(--gradient-wine)',
+            color: 'white'
+          }}
+        >
           Sign Up
         </Button>
       </Stack>

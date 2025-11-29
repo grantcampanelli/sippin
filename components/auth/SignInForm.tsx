@@ -64,11 +64,20 @@ export function SignInForm() {
           {...form.getInputProps('password')}
         />
         <Text size="sm" ta="right">
-          <Link href="/auth/forgot-password" style={{ textDecoration: 'none' }}>
+          <Link href="/auth/forgot-password" style={{ textDecoration: 'none', color: 'var(--color-wine)' }}>
             Forgot password?
           </Link>
         </Text>
-        <Button type="submit" fullWidth loading={loading}>
+        <Button 
+          type="submit" 
+          fullWidth 
+          loading={loading}
+          size="md"
+          style={{ 
+            background: 'var(--gradient-wine)',
+            color: 'white'
+          }}
+        >
           Sign In
         </Button>
       </Stack>

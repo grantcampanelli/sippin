@@ -92,11 +92,20 @@ export function ResetPasswordForm({ token, email }: ResetPasswordFormProps) {
           required
           {...form.getInputProps('confirmPassword')}
         />
-        <Button type="submit" fullWidth loading={loading}>
+        <Button 
+          type="submit" 
+          fullWidth 
+          loading={loading}
+          size="md"
+          style={{ 
+            background: 'var(--gradient-wine)',
+            color: 'white'
+          }}
+        >
           Reset Password
         </Button>
         <Text size="sm" c="dimmed" ta="center">
-          <Link href="/auth/signin" style={{ textDecoration: 'none' }}>
+          <Link href="/auth/signin" style={{ textDecoration: 'none', color: 'var(--color-wine)' }}>
             Back to Sign In
           </Link>
         </Text>

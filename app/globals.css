@@ -1,24 +1,59 @@
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-playfair: 'Playfair Display', Georgia, serif;
+  
+  --color-wine: #7f1d1d;
+  --color-wine-light: #c92a2a;
+  --color-burgundy: #6b1a1a;
+  --color-amber: #ffbf0a;
+  --color-amber-dark: #cc9900;
+  --color-cream: #faf8f3;
+  --color-beige: #f5f1e8;
+  --color-brown: #3d2817;
+  --color-gold: #d4af37;
+  
+  --gradient-wine: linear-gradient(135deg, #7f1d1d 0%, #a61e1e 100%);
+  --gradient-amber: linear-gradient(135deg, #ffbf0a 0%, #ffcc3d 100%);
+  --gradient-warm: linear-gradient(135deg, #faf8f3 0%, #f5f1e8 100%);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  color: var(--color-brown);
+  background: var(--color-cream);
+  min-height: 100vh;
+  font-family: var(--font-inter);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-playfair);
+  color: var(--color-burgundy);
+  font-weight: 600;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-beige);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-wine);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-burgundy);
 }
 

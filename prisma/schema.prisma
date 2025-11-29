@@ -10,6 +10,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================================================
+// AUTH MODELS (NextAuth)
+// ============================================================================
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -49,8 +53,12 @@ model User {
   password       String?   // For email/password authentication
   accounts       Account[]
   sessions       Session[]
+  bottles        Bottle[]
+  stashes        Stash[]
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+
+  @@index([email])
 }
 
 model VerificationToken {
@@ -61,3 +69,227 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// ============================================================================
+// PRODUCT MODELS
+// ============================================================================
+
+model Brand {
+  id          String    @id @default(cuid())
+  name        String
+  type        BrandType
+  country     String?   // Country of origin
+  website     String?   // Brand website URL
+  description String?   @db.Text
+  imageUrl    String?
+  products    Product[]
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([type])
+  @@index([name])
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  brandId     String
+  brand       Brand    @relation(fields: [brandId], references: [id])
+  
+  // Type-specific product data (only one should be set based on brand.type)
+  wineData    WineProduct?
+  spiritData  SpiritProduct?
+  
+  // Common product fields
+  description String?  @db.Text
+  imageUrl    String?
+  barcode     String?  // UPC/EAN barcode for scanning
+  
+  bottles     Bottle[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([brandId])
+  @@index([name])
+}
+
+// Wine-specific product attributes
+model WineProduct {
+  id          String   @id @default(cuid())
+  productId   String   @unique
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  vintage     String?  // e.g., "2020" or "NV" for non-vintage
+  varietal    String?  // e.g., "Cabernet Sauvignon", "Chardonnay", "Blend"
+  region      String?  // e.g., "Napa Valley", "Bordeaux"
+  appellation String?  // e.g., "AOC", "AVA", "DOCG"
+  style       String?  // e.g., "Red", "White", "Rosé", "Sparkling", "Dessert"
+  sweetness   String?  // e.g., "Dry", "Off-Dry", "Semi-Sweet", "Sweet"
+  abv         Float?   // Alcohol by volume percentage (e.g., 13.5)
+  producer    String?  // Winery/producer name (if different from brand)
+  vineyard    String?  // Specific vineyard name
+  
+  @@index([vintage])
+  @@index([varietal])
+  @@index([region])
+  @@index([style])
+}
+
+// Spirit/Whiskey-specific product attributes
+model SpiritProduct {
+  id            String   @id @default(cuid())
+  productId     String   @unique
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  ageStatement  String?  // e.g., "12 years", "NAS", "10 Year"
+  distillery    String?  // Distillery name (if different from brand)
+  caskType      String?  // e.g., "Bourbon Barrel", "Sherry Cask", "Port Cask", "Virgin Oak"
+  mashBill      String?  // For bourbon: grain composition (e.g., "75% corn, 21% rye, 4% malted barley")
+  proof         Float?   // Alcohol proof (US) - e.g., 80, 100, 120
+  abv           Float?   // Alcohol by volume percentage
+  region        String?  // e.g., "Islay", "Highland", "Kentucky", "Tennessee"
+  style         String?  // e.g., "Single Malt", "Bourbon", "Rye", "Blended", "Single Barrel"
+  finish        String?  // e.g., "Peated", "Unpeated", "Smoky", "Sherry Finished"
+  batchNumber   String?  // Batch or lot number
+  releaseYear   Int?     // Year released (different from age statement)
+  barrelNumber  String?  // Barrel number for single barrel releases
+  
+  @@index([distillery])
+  @@index([region])
+  @@index([style])
+  @@index([ageStatement])
+}
+
+// ============================================================================
+// INVENTORY MODELS
+// ============================================================================
+
+model Bottle {
+  id              String     @id @default(cuid())
+  
+  // Physical bottle properties
+  size            Float?     // Volume in ml (standardize on ml)
+  sizeUnit        String?    @default("ml") // "ml" or "oz" - for display purposes
+  servingSize     Float?     // Standard serving size in ml
+  
+  // Purchase information
+  purchasePrice   Float?
+  purchaseCurrency String?   @default("USD") // Currency code (USD, EUR, etc.)
+  purchaseDate    DateTime?
+  purchaseLocation String?   // Where purchased (store, online, gift, etc.)
+  
+  // Consumption tracking
+  openDate        DateTime?
+  finished        Boolean    @default(false)
+  finishDate      DateTime?
+  amountRemaining Float?     // Percentage (0-100) or ml remaining
+  
+  // Personal notes and metadata
+  notes           String?    @db.Text
+  rating          Int?       // Personal rating 1-10 or 1-5
+  imageUrl        String?    // Photo of this specific bottle
+  barcode         String?    // Bottle-specific barcode if different from product
+  
+  // Gift information
+  giftFrom        String?    // Who gave it
+  giftOccasion    String?    // Occasion (birthday, holiday, etc.)
+  giftDate        DateTime?  // When received as gift
+  
+  // Valuation
+  estimatedValue  Float?     // Current estimated market value
+  
+  // Relations
+  userId          String
+  user            User       @relation(fields: [userId], references: [id])
+  productId       String
+  product         Product    @relation(fields: [productId], references: [id])
+  shelfItem       ShelfItem?
+  
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  
+  @@index([userId])
+  @@index([userId, finished])
+  @@index([productId])
+  @@index([finished])
+  @@index([purchaseDate])
+}
+
+// ============================================================================
+// STORAGE MODELS
+// ============================================================================
+
+model Stash {
+  id          String   @id @default(cuid())
+  name        String
+  location    String   // Physical location description
+  type        StashType
+  description String?  @db.Text
+  imageUrl    String?
+  archived    Boolean  @default(false)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  shelves     Shelf[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([userId, type])
+  @@index([userId, archived])
+}
+
+model Shelf {
+  id          String      @id @default(cuid())
+  name        String
+  order       Int?        // Display order within stash
+  capacity    Int?        // Max number of bottles (optional)
+  temp        Float?      // Temperature in Celsius
+  humidity    Float?     // Humidity percentage (0-100)
+  description String?     @db.Text
+  stashId     String?
+  stash       Stash?      @relation(fields: [stashId], references: [id], onDelete: Cascade)
+  shelfItems  ShelfItem[]
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  @@index([stashId])
+  @@index([stashId, order])
+}
+
+model ShelfItem {
+  id       String @id @default(cuid())
+  order   Int    // Display order within shelf
+  bottleId String @unique
+  shelfId  String
+  bottle   Bottle @relation(fields: [bottleId], references: [id], onDelete: Cascade)
+  shelf    Shelf  @relation(fields: [shelfId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@index([shelfId])
+  @@index([shelfId, order])
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum BrandType {
+  WINE
+  SPIRIT
+  BEER
+  // Add more as needed: SAKE, MEAD, etc.
+}
+
+enum StashType {
+  WINE_CELLAR
+  LIQUOR_CABINET
+  BAR
+  REFRIGERATOR
+  FRIDGE
+  GENERAL_STORAGE
+  DISPLAY_CABINET
+}
