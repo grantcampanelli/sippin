@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, location, type, description, imageUrl } = body
+    const { name, location, type, description, imageUrl, shelves } = body
 
     if (!name || !location || !type) {
       return NextResponse.json(
@@ -77,6 +77,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // If no shelves provided, create a default single shelf
+    const shelvesToCreate = shelves && shelves.length > 0 
+      ? shelves 
+      : [{ name: 'Default Shelf' }]
+
+    // Create stash with shelves in a transaction
     const stash = await prisma.stash.create({
       data: {
         name,
@@ -84,10 +90,24 @@ export async function POST(request: NextRequest) {
         type,
         description,
         imageUrl,
-        userId: session.user.id
+        userId: session.user.id,
+        shelves: {
+          create: shelvesToCreate.map((shelf: any, index: number) => ({
+            name: shelf.name || `Shelf ${index + 1}`,
+            order: shelf.order ?? index + 1,
+            capacity: shelf.capacity ?? null,
+            temp: shelf.temp ?? null,
+            humidity: shelf.humidity ?? null,
+            description: shelf.description ?? null
+          }))
+        }
       },
       include: {
-        shelves: true
+        shelves: {
+          orderBy: {
+            order: 'asc'
+          }
+        }
       }
     })
 
@@ -95,7 +115,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating stash:', error)
     return NextResponse.json(
-      { error: 'Failed to create stash' },
+      { error: 'Failed to create stash', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }

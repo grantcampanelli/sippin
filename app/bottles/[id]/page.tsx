@@ -1,3 +1,8 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter, useParams } from 'next/navigation'
 import {
   Container,
   Title,
@@ -10,54 +15,194 @@ import {
   Divider,
   Paper,
   Grid,
-  Box
+  Box,
+  Loader,
+  Modal,
+  NumberInput,
+  Alert
 } from '@mantine/core'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { prisma } from '@/lib/prisma'
-import { IconArrowLeft, IconBottle, IconCalendar, IconCurrencyDollar } from '@tabler/icons-react'
+import { IconArrowLeft, IconBottle, IconCalendar, IconCurrencyDollar, IconEdit, IconTrash, IconCheck, IconAlertCircle } from '@tabler/icons-react'
+import { notifications } from '@mantine/notifications'
 
-export default async function BottleDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = await params
-  const session = await getServerSession(authOptions)
+interface Bottle {
+  id: string
+  size: number | null
+  amountRemaining: number | null
+  purchasePrice: number | null
+  purchaseDate: string | null
+  openDate: string | null
+  finished: boolean
+  finishDate: string | null
+  rating: number | null
+  notes: string | null
+  product: {
+    id: string
+    name: string
+    brand: {
+      id: string
+      name: string
+      type: string
+    }
+    wineData: {
+      vintage: string | null
+      varietal: string | null
+      region: string | null
+    } | null
+    spiritData: {
+      style: string | null
+    } | null
+  }
+  shelfItem: {
+    id: string
+    shelfId: string
+    shelf: {
+      name: string
+      stash: {
+        name: string
+      } | null
+    }
+  } | null
+}
 
-  if (!session) {
-    redirect('/auth/signin')
+export default function BottleDetailPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const params = useParams()
+  const id = params?.id as string
+  const [bottle, setBottle] = useState<Bottle | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [removeFromShelfModalOpen, setRemoveFromShelfModalOpen] = useState(false)
+  const [markCompleteModalOpen, setMarkCompleteModalOpen] = useState(false)
+  const [processing, setProcessing] = useState(false)
+  const [rating, setRating] = useState<number | ''>('')
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin')
+      return
+    }
+
+    if (status === 'authenticated' && id) {
+      fetchBottle()
+    }
+  }, [status, router, id])
+
+  const fetchBottle = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/bottles/${id}`)
+      if (response.ok) {
+        const data = await response.json()
+        setBottle(data)
+        setRating(data.rating ?? '')
+      } else if (response.status === 404) {
+        router.push('/bottles')
+      }
+    } catch (error) {
+      console.error('Error fetching bottle:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const bottle = await prisma.bottle.findFirst({
-    where: {
-      id,
-      userId: session.user.id
-    },
-    include: {
-      product: {
-        include: {
-          brand: true,
-          wineData: true,
-          spiritData: true
-        }
-      },
-      shelfItem: {
-        include: {
-          shelf: {
-            include: {
-              stash: true
-            }
-          }
-        }
-      }
-    }
-  })
+  const handleRemoveFromShelf = async () => {
+    if (!bottle?.shelfItem) return
 
-  if (!bottle) {
-    redirect('/stashes')
+    setProcessing(true)
+    try {
+      const response = await fetch(`/api/shelf-items?bottleId=${bottle.id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        notifications.show({
+          title: 'Removed from shelf',
+          message: 'Bottle has been removed from the shelf',
+          color: 'green',
+          icon: <IconCheck size={16} />,
+        })
+        setRemoveFromShelfModalOpen(false)
+        fetchBottle() // Refresh to update UI
+      } else {
+        const error = await response.json()
+        notifications.show({
+          title: 'Error',
+          message: error.error || 'Failed to remove bottle from shelf',
+          color: 'red',
+        })
+      }
+    } catch (error) {
+      console.error('Error removing from shelf:', error)
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to remove bottle from shelf',
+        color: 'red',
+      })
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  const handleMarkComplete = async () => {
+    if (!bottle) return
+
+    setProcessing(true)
+    try {
+      const finishDate = new Date().toISOString().split('T')[0]
+      
+      // Update bottle to finished
+      const updateResponse = await fetch(`/api/bottles/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          finished: true,
+          finishDate: finishDate,
+          amountRemaining: 0,
+          rating: rating === '' ? null : rating,
+        }),
+      })
+
+      if (!updateResponse.ok) {
+        const error = await updateResponse.json()
+        throw new Error(error.error || 'Failed to mark bottle as complete')
+      }
+
+      // Remove from shelf if it's on one
+      if (bottle.shelfItem) {
+        await fetch(`/api/shelf-items?bottleId=${bottle.id}`, {
+          method: 'DELETE',
+        })
+      }
+
+      notifications.show({
+        title: 'Bottle marked as complete!',
+        message: `${bottle.product.name} has been marked as finished`,
+        color: 'green',
+        icon: <IconCheck size={16} />,
+      })
+      
+      setMarkCompleteModalOpen(false)
+      setRating('')
+      fetchBottle() // Refresh to update UI
+    } catch (error) {
+      console.error('Error marking complete:', error)
+      notifications.show({
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Failed to mark bottle as complete',
+        color: 'red',
+      })
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  if (status === 'loading' || loading || !bottle) {
+    return (
+      <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader size="lg" color="wine" />
+      </Box>
+    )
   }
 
   const product = bottle.product
@@ -71,7 +216,7 @@ export default async function BottleDetailPage({
     return product.name
   }
 
-  const formatDate = (date: Date | null) => {
+  const formatDate = (date: string | null) => {
     if (!date) return 'N/A'
     return new Date(date).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -83,28 +228,61 @@ export default async function BottleDetailPage({
   return (
     <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)' }}>
       <Container size="md" py="xl">
-        <Group mb="xl">
-          {bottle.shelfItem ? (
-            <Link href={`/shelves/${bottle.shelfItem.shelfId}`} style={{ textDecoration: 'none' }}>
+        <Group mb="xl" justify="space-between">
+          <Group>
+            {bottle.shelfItem ? (
+              <Link href={`/shelves/${bottle.shelfItem.shelfId}`} style={{ textDecoration: 'none' }}>
+                <Button
+                  variant="subtle"
+                  leftSection={<IconArrowLeft size={16} />}
+                  style={{ color: 'var(--color-wine)' }}
+                >
+                  Back to {bottle.shelfItem.shelf.name}
+                </Button>
+              </Link>
+            ) : (
+              <Link href="/bottles" style={{ textDecoration: 'none' }}>
+                <Button
+                  variant="subtle"
+                  leftSection={<IconArrowLeft size={16} />}
+                  style={{ color: 'var(--color-wine)' }}
+                >
+                  Back to Bottles
+                </Button>
+              </Link>
+            )}
+          </Group>
+          <Group gap="sm">
+            {!bottle.finished && (
+              <>
+                {bottle.shelfItem && (
+                  <Button
+                    variant="light"
+                    color="orange"
+                    leftSection={<IconTrash size={16} />}
+                    onClick={() => setRemoveFromShelfModalOpen(true)}
+                  >
+                    Remove from Shelf
+                  </Button>
+                )}
+                <Button
+                  leftSection={<IconCheck size={16} />}
+                  onClick={() => setMarkCompleteModalOpen(true)}
+                  style={{ background: 'var(--color-wine)' }}
+                >
+                  Mark as Complete
+                </Button>
+              </>
+            )}
+            <Link href={`/bottles/${id}/edit`} style={{ textDecoration: 'none' }}>
               <Button
-                variant="subtle"
-                leftSection={<IconArrowLeft size={16} />}
-                style={{ color: 'var(--color-wine)' }}
+                leftSection={<IconEdit size={16} />}
+                variant="light"
               >
-                Back to {bottle.shelfItem.shelf.name}
+                Edit
               </Button>
             </Link>
-          ) : (
-            <Link href="/stashes" style={{ textDecoration: 'none' }}>
-              <Button
-                variant="subtle"
-                leftSection={<IconArrowLeft size={16} />}
-                style={{ color: 'var(--color-wine)' }}
-              >
-                Back to Stashes
-              </Button>
-            </Link>
-          )}
+          </Group>
         </Group>
 
         <Stack gap="xl">
@@ -126,13 +304,20 @@ export default async function BottleDetailPage({
                   {brand.name}
                 </Text>
               </div>
-              <Badge
-                size="lg"
-                color={brand.type === 'WINE' ? 'wine' : brand.type === 'SPIRIT' ? 'amber' : 'blue'}
-                style={{ fontWeight: 600 }}
-              >
-                {brand.type}
-              </Badge>
+              <Group gap="xs">
+                {bottle.finished && (
+                  <Badge color="gray" size="lg" variant="light">
+                    Finished
+                  </Badge>
+                )}
+                <Badge
+                  size="lg"
+                  color={brand.type === 'WINE' ? 'wine' : brand.type === 'SPIRIT' ? 'amber' : 'blue'}
+                  style={{ fontWeight: 600 }}
+                >
+                  {brand.type}
+                </Badge>
+              </Group>
             </Group>
           </Card>
 
@@ -169,12 +354,6 @@ export default async function BottleDetailPage({
                     <Text fw={500}>{product.wineData.vintage}</Text>
                   </Group>
                 )}
-                {product.wineData.abv && (
-                  <Group justify="space-between">
-                    <Text c="dimmed">ABV</Text>
-                    <Text fw={500}>{product.wineData.abv}%</Text>
-                  </Group>
-                )}
               </>
             )}
             {product.spiritData && (
@@ -183,24 +362,6 @@ export default async function BottleDetailPage({
                   <Group justify="space-between">
                     <Text c="dimmed">Style</Text>
                     <Text fw={500}>{product.spiritData.style}</Text>
-                  </Group>
-                )}
-                {product.spiritData.ageStatement && (
-                  <Group justify="space-between">
-                    <Text c="dimmed">Age Statement</Text>
-                    <Text fw={500}>{product.spiritData.ageStatement}</Text>
-                  </Group>
-                )}
-                {product.spiritData.abv && (
-                  <Group justify="space-between">
-                    <Text c="dimmed">ABV</Text>
-                    <Text fw={500}>{product.spiritData.abv}%</Text>
-                  </Group>
-                )}
-                {product.spiritData.proof && (
-                  <Group justify="space-between">
-                    <Text c="dimmed">Proof</Text>
-                    <Text fw={500}>{product.spiritData.proof}</Text>
                   </Group>
                 )}
               </>
@@ -316,7 +477,92 @@ export default async function BottleDetailPage({
         )}
       </Stack>
     </Container>
+
+    {/* Remove from Shelf Modal */}
+    <Modal
+      opened={removeFromShelfModalOpen}
+      onClose={() => setRemoveFromShelfModalOpen(false)}
+      title="Remove from Shelf"
+      centered
+    >
+      <Stack gap="md">
+        <Text>
+          Are you sure you want to remove <strong>{getProductDisplayName()}</strong> from the shelf?
+        </Text>
+        <Alert icon={<IconAlertCircle size={16} />} color="blue" variant="light">
+          The bottle will remain in your collection but will no longer be on any shelf.
+        </Alert>
+        <Group justify="flex-end" mt="md">
+          <Button
+            variant="subtle"
+            onClick={() => setRemoveFromShelfModalOpen(false)}
+            disabled={processing}
+          >
+            Cancel
+          </Button>
+          <Button
+            color="orange"
+            onClick={handleRemoveFromShelf}
+            loading={processing}
+          >
+            Remove from Shelf
+          </Button>
+        </Group>
+      </Stack>
+    </Modal>
+
+    {/* Mark as Complete Modal */}
+    <Modal
+      opened={markCompleteModalOpen}
+      onClose={() => {
+        setMarkCompleteModalOpen(false)
+        setRating(bottle.rating ?? '')
+      }}
+      title="Mark as Complete"
+      centered
+    >
+      <Stack gap="md">
+        <Text>
+          Mark <strong>{getProductDisplayName()}</strong> as finished?
+        </Text>
+        <Alert icon={<IconCheck size={16} />} color="green" variant="light">
+          This will:
+          <ul style={{ marginTop: '0.5rem', paddingLeft: '1.5rem' }}>
+            <li>Set the finish date to today</li>
+            <li>Set amount remaining to 0%</li>
+            <li>Remove the bottle from its shelf</li>
+          </ul>
+        </Alert>
+        <NumberInput
+          label="Rating (Optional)"
+          placeholder="Rate 1-10"
+          value={rating}
+          onChange={(value) => setRating(typeof value === 'number' ? value : '')}
+          min={1}
+          max={10}
+          allowDecimal={false}
+        />
+        <Group justify="flex-end" mt="md">
+          <Button
+            variant="subtle"
+            onClick={() => {
+              setMarkCompleteModalOpen(false)
+              setRating(bottle.rating ?? '')
+            }}
+            disabled={processing}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleMarkComplete}
+            loading={processing}
+            style={{ background: 'var(--color-wine)' }}
+          >
+            Mark as Complete
+          </Button>
+        </Group>
+      </Stack>
+    </Modal>
     </Box>
   )
 }
-

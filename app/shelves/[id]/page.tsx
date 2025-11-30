@@ -1,3 +1,8 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter, useParams } from 'next/navigation'
 import {
   Container,
   Title,
@@ -11,62 +16,100 @@ import {
   Divider,
   Paper,
   Box,
-  Table
+  Loader
 } from '@mantine/core'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { prisma } from '@/lib/prisma'
-import { IconBottle, IconTemperature, IconArrowLeft } from '@tabler/icons-react'
+import { IconBottle, IconTemperature, IconArrowLeft, IconPlus } from '@tabler/icons-react'
+import { AddBottlesModal } from '@/components/stashes/AddBottlesModal'
 
-export default async function ShelfDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = await params
-  const session = await getServerSession(authOptions)
-
-  if (!session) {
-    redirect('/auth/signin')
-  }
-
-  const shelf = await prisma.shelf.findFirst({
-    where: {
-      id,
-      stash: {
-        userId: session.user.id
-      }
-    },
-    include: {
-      stash: true,
-      shelfItems: {
-        include: {
-          bottle: {
-            include: {
-              product: {
-                include: {
-                  brand: true,
-                  wineData: true,
-                  spiritData: true
-                }
-              }
-            }
-          }
-        },
-        orderBy: {
-          order: 'asc'
+interface Shelf {
+  id: string
+  name: string
+  order: number | null
+  temp: number | null
+  capacity: number | null
+  description: string | null
+  stashId: string | null
+  stash: {
+    id: string
+    name: string
+    location: string
+  } | null
+  shelfItems: Array<{
+    id: string
+    order: number
+    bottle: {
+      id: string
+      finished: boolean
+      amountRemaining: number | null
+      purchasePrice: number | null
+      product: {
+        id: string
+        name: string
+        brand: {
+          id: string
+          name: string
+          type: string
         }
+        wineData: {
+          vintage: string | null
+          varietal: string | null
+          region: string | null
+        } | null
+        spiritData: {
+          style: string | null
+        } | null
       }
     }
-  })
+  }>
+}
 
-  if (!shelf) {
-    redirect('/stashes')
+export default function ShelfDetailPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const params = useParams()
+  const id = params?.id as string
+  const [shelf, setShelf] = useState<Shelf | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [addBottlesModalOpen, setAddBottlesModalOpen] = useState(false)
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin')
+      return
+    }
+
+    if (status === 'authenticated' && id) {
+      fetchShelf()
+    }
+  }, [status, router, id])
+
+  const fetchShelf = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/shelves/${id}`)
+      if (response.ok) {
+        const data = await response.json()
+        setShelf(data)
+      } else if (response.status === 404) {
+        router.push('/stashes')
+      }
+    } catch (error) {
+      console.error('Error fetching shelf:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const getProductDisplayName = (product: any) => {
+  if (status === 'loading' || loading || !shelf) {
+    return (
+      <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader size="lg" color="wine" />
+      </Box>
+    )
+  }
+
+  const getProductDisplayName = (product: Shelf['shelfItems'][0]['bottle']['product']) => {
     if (product.brand.type === 'WINE' && product.wineData) {
       const vintage = product.wineData.vintage ? `${product.wineData.vintage} ` : ''
       return `${vintage}${product.name}`
@@ -74,7 +117,7 @@ export default async function ShelfDetailPage({
     return product.name
   }
 
-  const getProductSubtitle = (product: any) => {
+  const getProductSubtitle = (product: Shelf['shelfItems'][0]['bottle']['product']) => {
     const parts = []
     if (product.brand.name) parts.push(product.brand.name)
     if (product.wineData?.varietal) parts.push(product.wineData.varietal)
@@ -167,9 +210,18 @@ export default async function ShelfDetailPage({
           </Card>
 
           <div>
-            <Title order={2} mb="md" style={{ color: 'var(--color-burgundy)' }}>
-              Bottles
-            </Title>
+            <Group justify="space-between" mb="md">
+              <Title order={2} style={{ color: 'var(--color-burgundy)' }}>
+                Bottles
+              </Title>
+              <Button
+                leftSection={<IconPlus size={16} />}
+                onClick={() => setAddBottlesModalOpen(true)}
+                style={{ background: 'var(--color-wine)' }}
+              >
+                Add Bottles
+              </Button>
+            </Group>
             
             {shelf.shelfItems.length === 0 ? (
               <Card 
@@ -181,9 +233,18 @@ export default async function ShelfDetailPage({
                   textAlign: 'center'
                 }}
               >
-                <Text ta="center" c="dimmed">
-                  No bottles on this shelf yet.
-                </Text>
+                <Stack gap="md" align="center">
+                  <Text ta="center" c="dimmed">
+                    No bottles on this shelf yet.
+                  </Text>
+                  <Button
+                    leftSection={<IconPlus size={16} />}
+                    onClick={() => setAddBottlesModalOpen(true)}
+                    style={{ background: 'var(--color-wine)' }}
+                  >
+                    Add Your First Bottle
+                  </Button>
+                </Stack>
               </Card>
             ) : (
               <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
@@ -261,6 +322,17 @@ export default async function ShelfDetailPage({
           </div>
         </Stack>
       </Container>
+
+      {/* Add Bottles Modal */}
+      <AddBottlesModal
+        opened={addBottlesModalOpen}
+        onClose={() => setAddBottlesModalOpen(false)}
+        onSuccess={() => {
+          fetchShelf()
+        }}
+        preselectedStashId={shelf.stashId || undefined}
+        preselectedShelfId={shelf.id}
+      />
     </Box>
   )
 }

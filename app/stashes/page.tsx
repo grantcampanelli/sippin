@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Container, Title, Text, SimpleGrid, Card, Group, Badge, Stack, Button, Box, Switch, Loader } from '@mantine/core'
 import Link from 'next/link'
-import { IconBottle, IconTemperature } from '@tabler/icons-react'
+import { IconBottle, IconTemperature, IconPlus } from '@tabler/icons-react'
 
 interface Stash {
   id: string
@@ -114,18 +114,28 @@ export default function StashesPage() {
               Manage your beverage storage locations
             </Text>
           </div>
-          {archivedStashes.length > 0 && (
-            <Switch
-              label="Show archived"
-              checked={showArchived}
-              onChange={(e) => setShowArchived(e.currentTarget.checked)}
-              styles={{
-                label: {
-                  color: 'var(--color-brown)',
-                },
-              }}
-            />
-          )}
+          <Group gap="md">
+            {archivedStashes.length > 0 && (
+              <Switch
+                label="Show archived"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.currentTarget.checked)}
+                styles={{
+                  label: {
+                    color: 'var(--color-brown)',
+                  },
+                }}
+              />
+            )}
+            <Link href="/stashes/create" style={{ textDecoration: 'none' }}>
+              <Button
+                leftSection={<IconPlus size={16} />}
+                style={{ background: 'var(--color-wine)' }}
+              >
+                Create Stash
+              </Button>
+            </Link>
+          </Group>
         </Group>
 
         {displayedStashes.length === 0 ? (
@@ -138,11 +148,24 @@ export default function StashesPage() {
               textAlign: 'center'
             }}
           >
-            <Text ta="center" c="dimmed" size="lg">
-              {showArchived 
-                ? 'No archived stashes.'
-                : 'No stashes yet. Create your first stash to get started!'}
-            </Text>
+            <Stack gap="md" align="center">
+              <Text ta="center" c="dimmed" size="lg">
+                {showArchived 
+                  ? 'No archived stashes.'
+                  : 'No stashes yet. Create your first stash to get started!'}
+              </Text>
+              {!showArchived && (
+                <Link href="/stashes/create" style={{ textDecoration: 'none' }}>
+                  <Button
+                    leftSection={<IconPlus size={16} />}
+                    style={{ background: 'var(--color-wine)' }}
+                    size="lg"
+                  >
+                    Create Your First Stash
+                  </Button>
+                </Link>
+              )}
+            </Stack>
           </Card>
         ) : (
           <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">

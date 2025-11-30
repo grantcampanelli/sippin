@@ -71,6 +71,7 @@ export async function PUT(
       size,
       servingSize,
       purchasePrice,
+      purchaseCurrency,
       purchaseDate,
       purchaseLocation,
       openDate,
@@ -79,7 +80,12 @@ export async function PUT(
       amountRemaining,
       notes,
       rating,
-      imageUrl
+      imageUrl,
+      barcode,
+      giftFrom,
+      giftOccasion,
+      giftDate,
+      estimatedValue
     } = body
 
     const updateData: any = {}
@@ -87,6 +93,7 @@ export async function PUT(
     if (size !== undefined) updateData.size = size
     if (servingSize !== undefined) updateData.servingSize = servingSize
     if (purchasePrice !== undefined) updateData.purchasePrice = purchasePrice
+    if (purchaseCurrency !== undefined) updateData.purchaseCurrency = purchaseCurrency
     if (purchaseDate !== undefined) updateData.purchaseDate = purchaseDate ? new Date(purchaseDate) : null
     if (purchaseLocation !== undefined) updateData.purchaseLocation = purchaseLocation
     if (openDate !== undefined) updateData.openDate = openDate ? new Date(openDate) : null
@@ -96,6 +103,11 @@ export async function PUT(
     if (notes !== undefined) updateData.notes = notes
     if (rating !== undefined) updateData.rating = rating
     if (imageUrl !== undefined) updateData.imageUrl = imageUrl
+    if (barcode !== undefined) updateData.barcode = barcode
+    if (giftFrom !== undefined) updateData.giftFrom = giftFrom
+    if (giftOccasion !== undefined) updateData.giftOccasion = giftOccasion
+    if (giftDate !== undefined) updateData.giftDate = giftDate ? new Date(giftDate) : null
+    if (estimatedValue !== undefined) updateData.estimatedValue = estimatedValue
     const bottle = await prisma.bottle.updateMany({
       where: {
         id,

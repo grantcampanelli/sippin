@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const finished = searchParams.get('finished')
     const productId = searchParams.get('productId')
+    const availableOnly = searchParams.get('availableOnly') === 'true' // Not on any shelf
 
     const where: any = {
       userId: session.user.id
@@ -25,6 +26,10 @@ export async function GET(request: NextRequest) {
 
     if (productId) {
       where.productId = productId
+    }
+
+    if (availableOnly) {
+      where.shelfItem = null
     }
 
     const bottles = await prisma.bottle.findMany({

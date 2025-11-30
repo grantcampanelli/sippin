@@ -598,8 +598,8 @@ async function main() {
             style: productData.style,
             sweetness: ('sweetness' in productData ? productData.sweetness : null) || null,
             abv: productData.abv,
-            producer: ('producer' in productData ? productData.producer : null) || null,
-            vineyard: ('vineyard' in productData ? productData.vineyard : null) || null,
+            producer: ('producer' in productData && typeof productData.producer === 'string' ? productData.producer : null) || null,
+            vineyard: ('vineyard' in productData && typeof productData.vineyard === 'string' ? productData.vineyard : null) || null,
           },
         })
       }
@@ -661,17 +661,17 @@ async function main() {
           data: {
             productId: product.id,
             ageStatement: productData.ageStatement,
-            distillery: ('distillery' in productData ? productData.distillery : null) || null,
-            caskType: ('caskType' in productData ? productData.caskType : null) || null,
-            mashBill: ('mashBill' in productData ? productData.mashBill : null) || null,
+            distillery: ('distillery' in productData && typeof productData.distillery === 'string' ? productData.distillery : null) || null,
+            caskType: ('caskType' in productData && typeof productData.caskType === 'string' ? productData.caskType : null) || null,
+            mashBill: ('mashBill' in productData && typeof productData.mashBill === 'string' ? productData.mashBill : null) || null,
             proof: productData.proof,
             abv: productData.abv,
             region: productData.region,
             style: productData.style,
-            finish: ('finish' in productData ? productData.finish : null) || null,
-            batchNumber: ('batchNumber' in productData ? productData.batchNumber : null) || null,
-            releaseYear: ('releaseYear' in productData ? productData.releaseYear : null) || null,
-            barrelNumber: ('barrelNumber' in productData ? productData.barrelNumber : null) || null,
+            finish: ('finish' in productData && typeof productData.finish === 'string' ? productData.finish : null) || null,
+            batchNumber: ('batchNumber' in productData && typeof productData.batchNumber === 'string' ? productData.batchNumber : null) || null,
+            releaseYear: ('releaseYear' in productData && typeof productData.releaseYear === 'number' ? productData.releaseYear : null) || null,
+            barrelNumber: ('barrelNumber' in productData && typeof productData.barrelNumber === 'string' ? productData.barrelNumber : null) || null,
           },
         })
       }

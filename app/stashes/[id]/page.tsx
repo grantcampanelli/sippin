@@ -23,8 +23,9 @@ import {
   Alert
 } from '@mantine/core'
 import Link from 'next/link'
-import { IconBottle, IconTemperature, IconArrowLeft, IconArchive, IconArchiveOff, IconDots, IconTrash, IconAlertCircle } from '@tabler/icons-react'
+import { IconBottle, IconTemperature, IconArrowLeft, IconArchive, IconArchiveOff, IconDots, IconTrash, IconAlertCircle, IconEdit, IconPlus } from '@tabler/icons-react'
 import { notifications } from '@mantine/notifications'
+import { AddBottlesModal } from '@/components/stashes/AddBottlesModal'
 
 interface Shelf {
   id: string
@@ -58,6 +59,8 @@ export default function StashDetailPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [removeItems, setRemoveItems] = useState<'keep' | 'remove'>('keep')
   const [processing, setProcessing] = useState(false)
+  const [addBottlesModalOpen, setAddBottlesModalOpen] = useState(false)
+  const [selectedShelfId, setSelectedShelfId] = useState<string | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -261,6 +264,18 @@ export default function StashDetailPage() {
                     </Button>
                   </Menu.Target>
                   <Menu.Dropdown>
+                    {!stash.archived && (
+                      <>
+                        <Link href={`/stashes/${id}/edit`} style={{ textDecoration: 'none' }}>
+                          <Menu.Item
+                            leftSection={<IconEdit size={16} />}
+                          >
+                            Edit Stash
+                          </Menu.Item>
+                        </Link>
+                        <Menu.Divider />
+                      </>
+                    )}
                     {stash.archived ? (
                       <Menu.Item
                         leftSection={<IconArchiveOff size={16} />}
@@ -323,9 +338,23 @@ export default function StashDetailPage() {
           </Card>
 
           <div>
-            <Title order={2} mb="md" style={{ color: 'var(--color-burgundy)' }}>
-              Shelves
-            </Title>
+            <Group justify="space-between" mb="md">
+              <Title order={2} style={{ color: 'var(--color-burgundy)' }}>
+                Shelves
+              </Title>
+              {stash.shelves.length > 0 && !stash.archived && (
+                <Button
+                  leftSection={<IconPlus size={16} />}
+                  onClick={() => {
+                    setSelectedShelfId(null)
+                    setAddBottlesModalOpen(true)
+                  }}
+                  style={{ background: 'var(--color-wine)' }}
+                >
+                  Add Bottles
+                </Button>
+              )}
+            </Group>
             
             {stash.shelves.length === 0 ? (
               <Card 
@@ -344,52 +373,69 @@ export default function StashDetailPage() {
             ) : (
               <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
                 {stash.shelves.map((shelf: typeof stash.shelves[0]) => (
-                  <Link key={shelf.id} href={`/shelves/${shelf.id}`} style={{ textDecoration: 'none', height: '100%', display: 'block' }}>
-                    <Card
-                      shadow="md"
-                      padding="lg"
-                      radius="md"
-                      withBorder
-                      style={{ 
-                        height: '100%',
-                        borderColor: 'var(--color-beige)',
-                        background: 'white',
-                        transition: 'all 0.2s',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Stack gap="md">
-                        <Group justify="space-between" align="flex-start">
+                  <Card
+                    key={shelf.id}
+                    shadow="md"
+                    padding="lg"
+                    radius="md"
+                    withBorder
+                    style={{ 
+                      height: '100%',
+                      borderColor: 'var(--color-beige)',
+                      background: 'white',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <Stack gap="md">
+                      <Group justify="space-between" align="flex-start">
+                        <Link href={`/shelves/${shelf.id}`} style={{ textDecoration: 'none', flex: 1 }}>
                           <Title order={4} style={{ color: 'var(--color-burgundy)' }}>
                             {shelf.name}
                           </Title>
-                          {shelf.order !== null && (
-                            <Badge variant="light" size="sm" color="wine">
-                              #{shelf.order}
-                            </Badge>
-                          )}
-                        </Group>
+                        </Link>
+                        {shelf.order !== null && (
+                          <Badge variant="light" size="sm" color="wine">
+                            #{shelf.order}
+                          </Badge>
+                        )}
+                      </Group>
 
-                        <Group gap="md">
-                          {shelf.temp !== null && (
-                            <Group gap={4}>
-                              <IconTemperature size={16} style={{ color: 'var(--color-wine)' }} />
-                              <Text size="sm">{shelf.temp}°C</Text>
-                            </Group>
-                          )}
-                          {shelf.capacity !== null && (
-                            <Text size="sm" c="dimmed">
-                              {shelf._count.shelfItems} / {shelf.capacity}
-                            </Text>
-                          )}
-                        </Group>
+                      <Group gap="md">
+                        {shelf.temp !== null && (
+                          <Group gap={4}>
+                            <IconTemperature size={16} style={{ color: 'var(--color-wine)' }} />
+                            <Text size="sm">{shelf.temp}°C</Text>
+                          </Group>
+                        )}
+                        {shelf.capacity !== null && (
+                          <Text size="sm" c="dimmed">
+                            {shelf._count.shelfItems} / {shelf.capacity}
+                          </Text>
+                        )}
+                      </Group>
 
+                      <Group justify="space-between" align="center">
                         <Text size="sm" fw={500} style={{ color: 'var(--color-burgundy)' }}>
                           {shelf._count.shelfItems} {shelf._count.shelfItems === 1 ? 'bottle' : 'bottles'}
                         </Text>
-                      </Stack>
-                    </Card>
-                  </Link>
+                        {!stash.archived && (
+                          <Button
+                            size="xs"
+                            variant="light"
+                            leftSection={<IconPlus size={14} />}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              setSelectedShelfId(shelf.id)
+                              setAddBottlesModalOpen(true)
+                            }}
+                          >
+                            Add
+                          </Button>
+                        )}
+                      </Group>
+                    </Stack>
+                  </Card>
                 ))}
               </SimpleGrid>
             )}
@@ -524,6 +570,20 @@ export default function StashDetailPage() {
           </Group>
         </Stack>
       </Modal>
+
+      {/* Add Bottles Modal */}
+      <AddBottlesModal
+        opened={addBottlesModalOpen}
+        onClose={() => {
+          setAddBottlesModalOpen(false)
+          setSelectedShelfId(null)
+        }}
+        onSuccess={() => {
+          fetchStash()
+        }}
+        preselectedStashId={id}
+        preselectedShelfId={selectedShelfId || undefined}
+      />
     </Box>
   )
 }
