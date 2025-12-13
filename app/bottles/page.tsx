@@ -25,7 +25,7 @@ import {
   Autocomplete,
   Divider,
 } from '@mantine/core'
-import { IconSearch, IconBottle, IconFilter, IconPlus, IconX } from '@tabler/icons-react'
+import { IconSearch, IconBottle, IconFilter, IconPlus, IconX, IconCamera } from '@tabler/icons-react'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import Link from 'next/link'
@@ -620,17 +620,32 @@ export default function BottlesPage() {
                 Manage your wine and liquor collection
               </Text>
             </div>
-            <Button
-              leftSection={<IconPlus size={18} />}
-              onClick={() => setQuickAddOpened(true)}
-              size="lg"
-              style={{
-                background: 'var(--gradient-wine)',
-                color: 'white',
-              }}
-            >
-              Quick Add
-            </Button>
+            <Group gap="sm">
+              <Link href="/bottles/scan" style={{ textDecoration: 'none' }}>
+                <Button
+                  leftSection={<IconCamera size={18} />}
+                  size="lg"
+                  variant="outline"
+                  style={{
+                    borderColor: 'var(--color-wine)',
+                    color: 'var(--color-wine)',
+                  }}
+                >
+                  Scan Bottle
+                </Button>
+              </Link>
+              <Button
+                leftSection={<IconPlus size={18} />}
+                onClick={() => setQuickAddOpened(true)}
+                size="lg"
+                style={{
+                  background: 'var(--gradient-wine)',
+                  color: 'white',
+                }}
+              >
+                Quick Add
+              </Button>
+            </Group>
           </Group>
 
           {/* Search and Filters */}
