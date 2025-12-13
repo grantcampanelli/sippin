@@ -13,23 +13,43 @@ export function getVisionClient(): ImageAnnotatorClient {
 
   // Initialize the client with credentials from environment variables
   try {
-    // Option 1: Use JSON file path if provided
-    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    // Option 1: Use JSON credentials directly (best for production)
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+      try {
+        const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON)
+        visionClient = new ImageAnnotatorClient({
+          credentials,
+        })
+      } catch (parseError) {
+        console.error('Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON:', parseError)
+        throw new Error('Invalid GOOGLE_APPLICATION_CREDENTIALS_JSON format')
+      }
+    }
+    // Option 2: Use JSON file path if provided (local development)
+    else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
       visionClient = new ImageAnnotatorClient({
         keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
       })
     }
-    // Option 2: Use individual environment variables
+    // Option 3: Use individual environment variables
     else if (
       process.env.GOOGLE_CLOUD_PROJECT_ID &&
       process.env.GOOGLE_CLOUD_PRIVATE_KEY &&
       process.env.GOOGLE_CLOUD_CLIENT_EMAIL
     ) {
       // Parse the private key to handle escaped newlines
-      const privateKey = process.env.GOOGLE_CLOUD_PRIVATE_KEY.replace(
-        /\\n/g,
-        '\n'
-      )
+      // Handle both literal \n and actual newlines
+      let privateKey = process.env.GOOGLE_CLOUD_PRIVATE_KEY
+      
+      // Replace literal \n with actual newlines if they exist
+      if (privateKey.includes('\\n')) {
+        privateKey = privateKey.replace(/\\n/g, '\n')
+      }
+      
+      // Ensure the key is properly formatted
+      if (!privateKey.includes('\n')) {
+        throw new Error('GOOGLE_CLOUD_PRIVATE_KEY appears to be improperly formatted. Make sure it includes newline characters.')
+      }
 
       visionClient = new ImageAnnotatorClient({
         projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
@@ -40,7 +60,10 @@ export function getVisionClient(): ImageAnnotatorClient {
       })
     } else {
       throw new Error(
-        'Google Cloud Vision credentials not found. Please set GOOGLE_APPLICATION_CREDENTIALS or GOOGLE_CLOUD_PROJECT_ID, GOOGLE_CLOUD_PRIVATE_KEY, and GOOGLE_CLOUD_CLIENT_EMAIL environment variables.'
+        'Google Cloud Vision credentials not found. Please set one of: ' +
+        '1) GOOGLE_APPLICATION_CREDENTIALS_JSON (recommended for production), ' +
+        '2) GOOGLE_APPLICATION_CREDENTIALS (local file path), or ' +
+        '3) GOOGLE_CLOUD_PROJECT_ID + GOOGLE_CLOUD_PRIVATE_KEY + GOOGLE_CLOUD_CLIENT_EMAIL'
       )
     }
 
