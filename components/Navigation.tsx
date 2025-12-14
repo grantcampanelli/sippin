@@ -1,6 +1,6 @@
 'use client'
 
-import { Group, Button, Container, Text, Menu, Avatar } from '@mantine/core'
+import { Group, Button, Container, Text, Menu, Avatar, ActionIcon } from '@mantine/core'
 import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
 import { IconBottle, IconLogout, IconDashboard, IconHome, IconBox, IconCamera } from '@tabler/icons-react'
@@ -106,9 +106,16 @@ export function Navigation() {
               </Button>
             </Link>
             
-            <Menu shadow="md" width={200}>
+            <Menu shadow="md" width={200} position="bottom-end" withinPortal>
               <Menu.Target>
-                <Button variant="subtle" color="white" style={{ color: 'white', padding: 0 }}>
+                <ActionIcon 
+                  variant="subtle" 
+                  size="lg"
+                  radius="xl"
+                  style={{ 
+                    background: 'transparent',
+                  }}
+                >
                   <Avatar 
                     size="sm" 
                     radius="xl" 
@@ -116,12 +123,12 @@ export function Navigation() {
                     style={{ 
                       background: 'rgba(255, 255, 255, 0.2)',
                       color: 'white',
-                      fontWeight: 600
+                      fontWeight: 600,
                     }}
                   >
                     {session.user?.name?.charAt(0) || session.user?.email?.charAt(0) || 'U'}
                   </Avatar>
-                </Button>
+                </ActionIcon>
               </Menu.Target>
               <Menu.Dropdown>
                 <Menu.Label>
