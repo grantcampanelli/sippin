@@ -22,11 +22,15 @@ import {
   ActionIcon,
   Badge,
   Alert,
-  Loader
+  Loader,
+  SegmentedControl,
+  SimpleGrid
 } from '@mantine/core'
-import { IconPlus, IconTrash, IconArrowLeft, IconInfoCircle, IconTemperature, IconDroplet, IconBox, IconAlertCircle } from '@tabler/icons-react'
+import { IconPlus, IconTrash, IconArrowLeft, IconInfoCircle, IconTemperature, IconDroplet, IconBox, IconAlertCircle, IconWand, IconSettings } from '@tabler/icons-react'
 import { notifications } from '@mantine/notifications'
 import Link from 'next/link'
+
+type SetupMode = 'quick' | 'advanced'
 
 interface ShelfFormData {
   id?: string
@@ -37,6 +41,14 @@ interface ShelfFormData {
   humidity: number | null
   description: string | null
   itemCount?: number
+}
+
+interface ShelfPreset {
+  value: string
+  label: string
+  description: string
+  shelves: number
+  capacity: number
 }
 
 interface StashData {
@@ -69,6 +81,37 @@ const STASH_TYPES = [
   { value: 'DISPLAY_CABINET', label: 'Display Cabinet' },
 ]
 
+const SHELF_PRESETS: ShelfPreset[] = [
+  {
+    value: 'single',
+    label: 'Single Shelf',
+    description: 'One general purpose shelf',
+    shelves: 1,
+    capacity: 12
+  },
+  {
+    value: 'small',
+    label: 'Small Cabinet',
+    description: '3 shelves, 6 bottles each',
+    shelves: 3,
+    capacity: 6
+  },
+  {
+    value: 'medium',
+    label: 'Medium Cabinet',
+    description: '5 shelves, 12 bottles each',
+    shelves: 5,
+    capacity: 12
+  },
+  {
+    value: 'large',
+    label: 'Large Cellar',
+    description: '10 shelves, 20 bottles each',
+    shelves: 10,
+    capacity: 20
+  },
+]
+
 export default function EditStashPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -83,6 +126,14 @@ export default function EditStashPage() {
   const [location, setLocation] = useState('')
   const [type, setType] = useState<string | null>(null)
   const [description, setDescription] = useState('')
+  
+  // Setup mode
+  const [setupMode, setSetupMode] = useState<SetupMode>('advanced') // Default to advanced for edit
+  
+  // Quick setup
+  const [quickPreset, setQuickPreset] = useState<string | null>('single')
+  const [customShelfCount, setCustomShelfCount] = useState<number | string>('')
+  const [customShelfCapacity, setCustomShelfCapacity] = useState<number | string>('')
   
   // Shelf configuration
   const [hasMultipleShelves, setHasMultipleShelves] = useState(false)
@@ -154,6 +205,53 @@ export default function EditStashPage() {
       setLoading(false)
     }
   }
+
+  // Generate shelves from quick setup
+  const generateShelvesFromQuickSetup = (): ShelfFormData[] => {
+    // If custom configuration is provided, use it
+    if (typeof customShelfCount === 'number' && typeof customShelfCapacity === 'number') {
+      if (customShelfCount > 0 && customShelfCount <= 100 && customShelfCapacity > 0 && customShelfCapacity <= 1000) {
+        return Array.from({ length: customShelfCount }, (_, i) => ({
+          name: `Shelf ${i + 1}`,
+          order: i + 1,
+          capacity: customShelfCapacity,
+          temp: null,
+          humidity: null,
+          description: null
+        }))
+      }
+      
+      // Invalid numbers
+      return []
+    }
+    
+    // Use preset
+    if (quickPreset) {
+      const preset = SHELF_PRESETS.find(p => p.value === quickPreset)
+      if (preset) {
+        return Array.from({ length: preset.shelves }, (_, i) => ({
+          name: preset.shelves === 1 ? 'Main Shelf' : `Shelf ${i + 1}`,
+          order: i + 1,
+          capacity: preset.capacity,
+          temp: null,
+          humidity: null,
+          description: null
+        }))
+      }
+    }
+    
+    // Default: single shelf
+    return [{
+      name: 'Main Shelf',
+      order: 1,
+      capacity: 12,
+      temp: null,
+      humidity: null,
+      description: null
+    }]
+  }
+  
+  const hasCustomConfig = typeof customShelfCount === 'number' && typeof customShelfCapacity === 'number'
 
   const handleAddShelf = () => {
     const newOrder = shelves.length + 1
@@ -233,10 +331,28 @@ export default function EditStashPage() {
       return
     }
 
+    // Determine shelves based on setup mode
+    let shelvesToSend: ShelfFormData[] = []
+    
+    if (setupMode === 'quick') {
+      shelvesToSend = generateShelvesFromQuickSetup()
+      
+      // Validate custom configuration if provided
+      if (hasCustomConfig && shelvesToSend.length === 0) {
+        notifications.show({
+          title: 'Invalid configuration',
+          message: 'Please enter valid numbers for shelves (1-100) and capacity (1-1000)',
+          color: 'red',
+        })
+        return
+      }
+    } else {
+      // Advanced mode
+      shelvesToSend = hasMultipleShelves ? shelves : []
+    }
+
     setSaving(true)
     try {
-      const shelvesToSend = hasMultipleShelves ? shelves : []
-      
       const response = await fetch(`/api/stashes/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -394,27 +510,193 @@ export default function EditStashPage() {
                     Shelf Configuration
                   </Title>
                   <Text size="sm" c="dimmed">
-                    {hasMultipleShelves 
-                      ? 'Configure multiple shelves for your stash'
-                      : 'Your stash has one shelf. Enable multiple shelves to customize each one.'}
+                    Choose how you want to set up your shelves
                   </Text>
                 </div>
 
-                <Switch
-                  label="Configure multiple shelves"
-                  checked={hasMultipleShelves}
-                  onChange={(e) => {
-                    const checked = e.currentTarget.checked
-                    setHasMultipleShelves(checked)
-                    if (!checked && shelves.length > 1) {
-                      // Keep only the first shelf
-                      setShelves([shelves[0]])
-                    }
-                  }}
+                {/* Setup Mode Toggle */}
+                <SegmentedControl
+                  value={setupMode}
+                  onChange={(value) => setSetupMode(value as SetupMode)}
+                  data={[
+                    {
+                      value: 'quick',
+                      label: (
+                        <Group gap="xs" justify="center">
+                          <IconWand size={16} />
+                          <span>Quick Setup</span>
+                        </Group>
+                      ),
+                    },
+                    {
+                      value: 'advanced',
+                      label: (
+                        <Group gap="xs" justify="center">
+                          <IconSettings size={16} />
+                          <span>Advanced</span>
+                        </Group>
+                      ),
+                    },
+                  ]}
+                  fullWidth
+                  color="wine"
                   styles={{
-                    label: { color: 'var(--color-brown)', fontWeight: 500 }
+                    root: {
+                      background: 'var(--color-cream)',
+                    },
                   }}
                 />
+
+                {/* Quick Setup Mode */}
+                {setupMode === 'quick' && (
+                  <Stack gap="lg">
+                    <Alert icon={<IconInfoCircle size={16} />} color="orange" variant="light">
+                      Note: Using quick setup will replace all existing shelf configurations. Switch to Advanced mode to keep current settings.
+                    </Alert>
+                    
+                    <div>
+                      <Text fw={600} mb="sm" style={{ color: 'var(--color-burgundy)' }}>
+                        Choose a preset or enter custom dimensions
+                      </Text>
+                      
+                      {/* Preset Options */}
+                      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mb="md">
+                        {SHELF_PRESETS.map((preset) => (
+                          <Paper
+                            key={preset.value}
+                            p="md"
+                            withBorder
+                            style={{
+                              borderColor: quickPreset === preset.value && !hasCustomConfig 
+                                ? 'var(--color-wine)' 
+                                : 'var(--color-beige)',
+                              borderWidth: quickPreset === preset.value && !hasCustomConfig ? 2 : 1,
+                              background: quickPreset === preset.value && !hasCustomConfig 
+                                ? 'var(--color-cream)' 
+                                : 'white',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease'
+                            }}
+                            onClick={() => {
+                              setQuickPreset(preset.value)
+                              setCustomShelfCount('')
+                              setCustomShelfCapacity('')
+                            }}
+                          >
+                            <Stack gap="xs">
+                              <Group justify="space-between">
+                                <Text fw={600} style={{ color: 'var(--color-burgundy)' }}>
+                                  {preset.label}
+                                </Text>
+                                {quickPreset === preset.value && !hasCustomConfig && (
+                                  <Badge color="wine" size="sm">Selected</Badge>
+                                )}
+                              </Group>
+                              <Text size="sm" c="dimmed">
+                                {preset.description}
+                              </Text>
+                              <Group gap="xs">
+                                <Badge variant="light" color="blue">
+                                  {preset.shelves} {preset.shelves === 1 ? 'shelf' : 'shelves'}
+                                </Badge>
+                                <Badge variant="light" color="green">
+                                  {preset.capacity} bottles each
+                                </Badge>
+                              </Group>
+                            </Stack>
+                          </Paper>
+                        ))}
+                      </SimpleGrid>
+
+                      {/* Custom Configuration */}
+                      <Paper p="md" withBorder style={{ 
+                        borderColor: hasCustomConfig ? 'var(--color-wine)' : 'var(--color-beige)',
+                        borderWidth: hasCustomConfig ? 2 : 1,
+                        background: hasCustomConfig ? 'var(--color-cream)' : 'white'
+                      }}>
+                        <Stack gap="md">
+                          <Group justify="space-between" align="flex-start">
+                            <div>
+                              <Text fw={600} style={{ color: 'var(--color-burgundy)' }}>
+                                Custom Configuration
+                              </Text>
+                              <Text size="sm" c="dimmed">
+                                Specify the number of shelves and capacity per shelf
+                              </Text>
+                            </div>
+                            {hasCustomConfig && (
+                              <Badge color="wine" size="sm">Custom</Badge>
+                            )}
+                          </Group>
+                          
+                          <Group grow align="flex-start">
+                            <NumberInput
+                              label="Number of Shelves"
+                              placeholder="e.g., 3"
+                              value={customShelfCount}
+                              onChange={(value) => {
+                                setCustomShelfCount(value)
+                                if (value) {
+                                  setQuickPreset(null)
+                                }
+                              }}
+                              min={1}
+                              max={100}
+                              allowDecimal={false}
+                              leftSection={<IconBox size={16} />}
+                              styles={{
+                                label: { color: 'var(--color-brown)', fontWeight: 500 }
+                              }}
+                            />
+                            <NumberInput
+                              label="Bottles per Shelf"
+                              placeholder="e.g., 5"
+                              value={customShelfCapacity}
+                              onChange={(value) => {
+                                setCustomShelfCapacity(value)
+                                if (value) {
+                                  setQuickPreset(null)
+                                }
+                              }}
+                              min={1}
+                              max={1000}
+                              allowDecimal={false}
+                              leftSection={<IconBox size={16} />}
+                              styles={{
+                                label: { color: 'var(--color-brown)', fontWeight: 500 }
+                              }}
+                            />
+                          </Group>
+                          
+                          {hasCustomConfig && (
+                            <Alert color="green" variant="light" icon={<IconInfoCircle size={16} />}>
+                              Will create {customShelfCount} {customShelfCount === 1 ? 'shelf' : 'shelves'} with {customShelfCapacity} bottle capacity each
+                            </Alert>
+                          )}
+                        </Stack>
+                      </Paper>
+                    </div>
+                  </Stack>
+                )}
+
+                {/* Advanced Setup Mode */}
+                {setupMode === 'advanced' && (
+                  <>
+                    <Switch
+                      label="Configure multiple shelves"
+                      checked={hasMultipleShelves}
+                      onChange={(e) => {
+                        const checked = e.currentTarget.checked
+                        setHasMultipleShelves(checked)
+                        if (!checked && shelves.length > 1) {
+                          // Keep only the first shelf
+                          setShelves([shelves[0]])
+                        }
+                      }}
+                      styles={{
+                        label: { color: 'var(--color-brown)', fontWeight: 500 }
+                      }}
+                    />
 
                 {hasMultipleShelves && (
                   <>
@@ -590,10 +872,12 @@ export default function EditStashPage() {
                   </>
                 )}
 
-                {!hasMultipleShelves && (
+                {!hasMultipleShelves && setupMode === 'advanced' && (
                   <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
                     Your stash has a single shelf. Enable multiple shelves to add more and customize each one.
                   </Alert>
+                )}
+                  </>
                 )}
               </Stack>
             </Card>
