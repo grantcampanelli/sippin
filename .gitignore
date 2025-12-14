@@ -39,7 +39,8 @@ config/google-credentials.json
 next-env.d.ts
 
 # prisma
-/prisma/migrations
+# Note: migrations should be tracked in git for production deployments
+# /prisma/migrations
 
 # IDE
 .vscode/
