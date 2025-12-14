@@ -3,7 +3,7 @@
 import { Group, Button, Container, Text, Menu, Avatar, ActionIcon } from '@mantine/core'
 import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
-import { IconBottle, IconLogout, IconDashboard, IconHome, IconBox, IconCamera } from '@tabler/icons-react'
+import { IconBottle, IconLogout, IconDashboard, IconBox } from '@tabler/icons-react'
 import { usePathname } from 'next/navigation'
 
 export function Navigation() {
@@ -83,16 +83,6 @@ export function Navigation() {
                 style={isActive('/bottles') ? { color: 'var(--color-brown)' } : { color: 'white' }}
               >
                 Bottles
-              </Button>
-            </Link>
-            <Link href="/bottles/scan" style={{ textDecoration: 'none' }}>
-              <Button 
-                variant={isActive('/bottles/scan') ? 'filled' : 'subtle'} 
-                color={isActive('/bottles/scan') ? 'amber' : 'white'}
-                leftSection={<IconCamera size={18} />}
-                style={isActive('/bottles/scan') ? { color: 'var(--color-brown)' } : { color: 'white' }}
-              >
-                Scan
               </Button>
             </Link>
             <Link href="/stashes" style={{ textDecoration: 'none' }}>
