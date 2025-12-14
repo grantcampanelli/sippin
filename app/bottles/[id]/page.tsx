@@ -306,30 +306,7 @@ export default function BottleDetailPage() {
   return (
     <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)' }}>
       <Container size="md" py="xl">
-        <Group mb="xl" justify="space-between">
-          <Group>
-            {bottle.shelfItem ? (
-              <Link href={`/shelves/${bottle.shelfItem.shelfId}`} style={{ textDecoration: 'none' }}>
-                <Button
-                  variant="subtle"
-                  leftSection={<IconArrowLeft size={16} />}
-                  style={{ color: 'var(--color-wine)' }}
-                >
-                  Back to {bottle.shelfItem.shelf.name}
-                </Button>
-              </Link>
-            ) : (
-              <Link href="/bottles" style={{ textDecoration: 'none' }}>
-                <Button
-                  variant="subtle"
-                  leftSection={<IconArrowLeft size={16} />}
-                  style={{ color: 'var(--color-wine)' }}
-                >
-                  Back to Bottles
-                </Button>
-              </Link>
-            )}
-          </Group>
+        <Group mb="xl" justify="flex-end">
           <Group gap="sm">
             {!bottle.finished && (
               <>

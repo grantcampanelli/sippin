@@ -342,18 +342,6 @@ export default function StashDetailPage() {
   return (
     <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)' }}>
       <Container size="xl" py="xl">
-        <Group mb="xl">
-          <Link href="/stashes" style={{ textDecoration: 'none' }}>
-            <Button
-              variant="subtle"
-              leftSection={<IconArrowLeft size={16} />}
-              style={{ color: 'var(--color-wine)' }}
-            >
-              Back to Stashes
-            </Button>
-          </Link>
-        </Group>
-
         <Stack gap="xl">
           <Card 
             padding="xl" 
