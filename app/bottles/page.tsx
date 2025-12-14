@@ -25,7 +25,7 @@ import {
   Autocomplete,
   Divider,
 } from '@mantine/core'
-import { IconSearch, IconBottle, IconFilter, IconPlus, IconX, IconCamera, IconMapPin } from '@tabler/icons-react'
+import { IconSearch, IconBottle, IconFilter, IconPlus, IconX, IconCamera, IconMapPin, IconStack2 } from '@tabler/icons-react'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import Link from 'next/link'
@@ -651,6 +651,19 @@ export default function BottlesPage() {
               </Text>
             </div>
             <Group gap="sm">
+              <Link href="/bottles/inventory" style={{ textDecoration: 'none' }}>
+                <Button
+                  leftSection={<IconStack2 size={18} />}
+                  size="lg"
+                  variant="outline"
+                  style={{
+                    borderColor: 'var(--color-wine)',
+                    color: 'var(--color-wine)',
+                  }}
+                >
+                  Inventory
+                </Button>
+              </Link>
               <Link href="/bottles/scan" style={{ textDecoration: 'none' }}>
                 <Button
                   leftSection={<IconCamera size={18} />}

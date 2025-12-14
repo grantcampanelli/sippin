@@ -171,6 +171,10 @@ export function AddBottlesModal({
   const availableCapacity = selectedShelf?.capacity 
     ? selectedShelf.capacity - selectedShelf._count.shelfItems 
     : null
+  
+  // Determine if this is a simple stash (single default shelf)
+  const isSimpleStash = selectedStash && selectedStash.shelves.length === 1 && 
+    (selectedStash.shelves[0].name === 'Default Shelf' || selectedStash.shelves[0].name === 'Main Shelf')
 
   const handleToggleBottle = (bottleId: string) => {
     const newSelected = new Set(selectedBottleIds)
@@ -191,10 +195,13 @@ export function AddBottlesModal({
   }
 
   const handleSubmit = async () => {
-    if (!selectedShelfId) {
+    // For simple stashes, auto-select the single shelf
+    const shelfId = selectedShelfId || (isSimpleStash && selectedStash ? selectedStash.shelves[0].id : null)
+    
+    if (!shelfId) {
       notifications.show({
-        title: 'Select a shelf',
-        message: 'Please select a shelf to add bottles to',
+        title: isSimpleStash ? 'Select a stash' : 'Select a shelf',
+        message: isSimpleStash ? 'Please select a stash to add bottles to' : 'Please select a shelf to add bottles to',
         color: 'red',
       })
       return
@@ -226,7 +233,7 @@ export function AddBottlesModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bottleIds: Array.from(selectedBottleIds),
-          shelfId: selectedShelfId
+          shelfId: shelfId
         }),
       })
 
@@ -234,7 +241,7 @@ export function AddBottlesModal({
         const result = await response.json()
         notifications.show({
           title: 'Bottles added!',
-          message: `Successfully added ${result.count} ${result.count === 1 ? 'bottle' : 'bottles'} to shelf`,
+          message: `Successfully added ${result.count} ${result.count === 1 ? 'bottle' : 'bottles'}${isSimpleStash ? '' : ' to shelf'}`,
           color: 'green',
           icon: <IconCheck size={16} />,
         })
@@ -264,13 +271,14 @@ export function AddBottlesModal({
     <Modal
       opened={opened}
       onClose={onClose}
-      title="Add Bottles to Shelf"
+      title={isSimpleStash ? "Add Bottles to Stash" : "Add Bottles to Shelf"}
       size="xl"
       centered
     >
       <Stack gap="md">
         {/* Stash and Shelf Selection */}
-        <Group grow>
+        {isSimpleStash ? (
+          // For simple stashes, only show stash selector
           <Select
             label="Stash"
             placeholder="Select a stash"
@@ -281,30 +289,44 @@ export function AddBottlesModal({
             searchable
             disabled={!!preselectedStashId}
           />
-          <Select
-            label="Shelf"
-            placeholder="Select a shelf"
-            data={selectedStash?.shelves.map(s => ({
-              value: s.id,
-              label: `${s.name}${s.capacity ? ` (${s._count.shelfItems}/${s.capacity})` : ''}`
-            })) || []}
-            value={selectedShelfId}
-            onChange={setSelectedShelfId}
-            required
-            disabled={!!preselectedShelfId || !selectedStashId}
-          />
-        </Group>
+        ) : (
+          // For multi-shelf stashes, show both selectors
+          <Group grow>
+            <Select
+              label="Stash"
+              placeholder="Select a stash"
+              data={stashes.map(s => ({ value: s.id, label: `${s.name} (${s.location})` }))}
+              value={selectedStashId}
+              onChange={setSelectedStashId}
+              required
+              searchable
+              disabled={!!preselectedStashId}
+            />
+            <Select
+              label="Shelf"
+              placeholder="Select a shelf"
+              data={selectedStash?.shelves.map(s => ({
+                value: s.id,
+                label: `${s.name}${s.capacity ? ` (${s._count.shelfItems}/${s.capacity})` : ''}`
+              })) || []}
+              value={selectedShelfId}
+              onChange={setSelectedShelfId}
+              required
+              disabled={!!preselectedShelfId || !selectedStashId}
+            />
+          </Group>
+        )}
 
         {/* Capacity Warning */}
         {selectedShelf && availableCapacity !== null && (
           <Alert icon={<IconAlertCircle size={16} />} color={availableCapacity === 0 ? 'red' : 'blue'} variant="light">
             {availableCapacity === 0 
-              ? 'This shelf is at full capacity'
-              : `This shelf can hold ${availableCapacity} more ${availableCapacity === 1 ? 'bottle' : 'bottles'}`}
+              ? `This ${isSimpleStash ? 'stash' : 'shelf'} is at full capacity`
+              : `This ${isSimpleStash ? 'stash' : 'shelf'} can hold ${availableCapacity} more ${availableCapacity === 1 ? 'bottle' : 'bottles'}`}
           </Alert>
         )}
 
-        {selectedShelfId && (
+        {(selectedShelfId || (isSimpleStash && selectedStashId)) && (
           <>
             <Divider />
             
@@ -418,7 +440,7 @@ export function AddBottlesModal({
               <Button
                 onClick={handleSubmit}
                 loading={saving}
-                disabled={selectedBottleIds.size === 0 || (availableCapacity !== null && selectedBottleIds.size > availableCapacity)}
+                disabled={selectedBottleIds.size === 0 || (availableCapacity !== null && selectedBottleIds.size > availableCapacity) || (!selectedShelfId && !isSimpleStash)}
                 style={{ background: 'var(--color-wine)' }}
               >
                 Add {selectedBottleIds.size > 0 ? `${selectedBottleIds.size} ` : ''}Bottle{selectedBottleIds.size !== 1 ? 's' : ''}

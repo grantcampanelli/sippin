@@ -603,23 +603,27 @@ export default function CreateStashPage() {
                 {/* Advanced Setup Mode */}
                 {setupMode === 'advanced' && (
                   <>
-                    <Switch
-                      label="Configure multiple shelves"
-                      checked={hasMultipleShelves}
-                      onChange={(e) => {
-                        const checked = e.currentTarget.checked
-                        setHasMultipleShelves(checked)
-                        if (!checked) {
-                          // Reset to single default shelf
-                          setShelves([
-                            { name: 'Default Shelf', order: 1, capacity: null, temp: null, humidity: null, description: null }
-                          ])
-                        }
-                      }}
-                      styles={{
-                        label: { color: 'var(--color-brown)', fontWeight: 500 }
-                      }}
-                    />
+                    <Box>
+                      <Switch
+                        label="Configure multiple shelves"
+                        description="Organize your bottles across different shelves with specific capacities and storage conditions"
+                        checked={hasMultipleShelves}
+                        onChange={(e) => {
+                          const checked = e.currentTarget.checked
+                          setHasMultipleShelves(checked)
+                          if (!checked) {
+                            // Reset to single default shelf
+                            setShelves([
+                              { name: 'Default Shelf', order: 1, capacity: null, temp: null, humidity: null, description: null }
+                            ])
+                          }
+                        }}
+                        styles={{
+                          label: { color: 'var(--color-brown)', fontWeight: 500 },
+                          description: { marginTop: 4 }
+                        }}
+                      />
+                    </Box>
 
                 {hasMultipleShelves && (
                   <>
@@ -780,7 +784,11 @@ export default function CreateStashPage() {
 
                 {!hasMultipleShelves && setupMode === 'advanced' && (
                   <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-                    Your stash will be created with a single default shelf. You can add more shelves later from the stash detail page.
+                    <Text size="sm" mb="xs" fw={500}>Simple Stash Mode</Text>
+                    <Text size="sm">
+                      Your stash will use a single default shelf. Bottles are added directly to your stash without worrying about shelf organization. 
+                      Enable "Configure multiple shelves" if you want to organize bottles across different shelves with specific capacities and conditions.
+                    </Text>
                   </Alert>
                 )}
                   </>

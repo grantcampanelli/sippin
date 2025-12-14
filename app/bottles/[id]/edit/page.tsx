@@ -24,6 +24,7 @@ import {
 import { IconArrowLeft, IconAlertCircle, IconCheck } from '@tabler/icons-react'
 import { notifications } from '@mantine/notifications'
 import Link from 'next/link'
+import { ImageUpload } from '@/components/bottles/ImageUpload'
 
 interface Bottle {
   id: string
@@ -458,11 +459,12 @@ export default function EditBottlePage() {
                   onChange={(e) => setNotes(e.target.value)}
                   minRows={4}
                 />
-                <TextInput
-                  label="Image URL"
-                  placeholder="URL to bottle image"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
+                <ImageUpload
+                  currentImageUrl={imageUrl || null}
+                  onImageUploaded={(url) => setImageUrl(url)}
+                  onImageRemoved={() => setImageUrl('')}
+                  label="Bottle Photo"
+                  description="Upload or replace the bottle photo"
                 />
               </Stack>
             </Card>

@@ -38,6 +38,7 @@ import {
 import { notifications } from '@mantine/notifications'
 import { useForm } from '@mantine/form'
 import Link from 'next/link'
+import { ImageUpload } from '@/components/bottles/ImageUpload'
 
 interface ParsedData {
   brandName?: string
@@ -77,7 +78,7 @@ interface Brand {
   type: string
 }
 
-type ScanState = 'initial' | 'capturing' | 'processing' | 'results' | 'creating' | 'bottle-details'
+type ScanState = 'initial' | 'capturing' | 'processing' | 'results' | 'creating' | 'bottle-details' | 'bottle-photo'
 
 export default function ScanBottlePage() {
   const { data: session, status } = useSession()
@@ -97,6 +98,7 @@ export default function ScanBottlePage() {
   const [creatingBrand, setCreatingBrand] = useState(false)
   const [creatingProduct, setCreatingProduct] = useState(false)
   const [showBrandForm, setShowBrandForm] = useState(false)
+  const [bottleImageUrl, setBottleImageUrl] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -339,7 +341,7 @@ export default function ScanBottlePage() {
         if (response.ok) {
           const newProduct = await response.json()
           setSelectedProduct(newProduct)
-          setScanState('bottle-details')
+          setScanState('bottle-photo')
           notifications.show({
             title: 'Product created',
             message: `${newProduct.name} has been added`,
@@ -367,6 +369,16 @@ export default function ScanBottlePage() {
 
   const handleSelectProduct = (product: Product) => {
     setSelectedProduct(product)
+    setScanState('bottle-photo')
+  }
+
+  const handleSkipPhoto = () => {
+    setBottleImageUrl(null)
+    setScanState('bottle-details')
+  }
+
+  const handlePhotoUploaded = (url: string) => {
+    setBottleImageUrl(url)
     setScanState('bottle-details')
   }
 
@@ -384,6 +396,7 @@ export default function ScanBottlePage() {
           : null,
         notes: bottleForm.values.notes || null,
         amountRemaining: 100,
+        imageUrl: bottleImageUrl,
       }
 
       const response = await fetch('/api/bottles', {
@@ -950,6 +963,97 @@ export default function ScanBottlePage() {
             </Stack>
           )}
 
+          {/* Bottle Photo Capture State */}
+          {scanState === 'bottle-photo' && selectedProduct && (
+            <Stack gap="lg">
+              <Card
+                padding="xl"
+                radius="md"
+                withBorder
+                style={{
+                  borderColor: 'var(--color-wine)',
+                  borderWidth: 2,
+                  background: 'white',
+                }}
+              >
+                <Stack gap="md">
+                  <Group justify="space-between">
+                    <Badge color="green" variant="light">
+                      Selected Product
+                    </Badge>
+                  </Group>
+                  <Text size="xl" fw={600} style={{ color: 'var(--color-burgundy)' }}>
+                    {selectedProduct.brand.name} {selectedProduct.name}
+                  </Text>
+                  <Group gap="xs">
+                    <Badge color={selectedProduct.brand.type === 'WINE' ? 'wine' : 'amber'}>
+                      {selectedProduct.brand.type}
+                    </Badge>
+                    {selectedProduct.wineData?.vintage && (
+                      <Badge variant="light">{selectedProduct.wineData.vintage}</Badge>
+                    )}
+                    {selectedProduct.wineData?.varietal && (
+                      <Badge variant="light">{selectedProduct.wineData.varietal}</Badge>
+                    )}
+                  </Group>
+                </Stack>
+              </Card>
+
+              <Card
+                padding="lg"
+                radius="md"
+                withBorder
+                style={{
+                  borderColor: 'var(--color-beige)',
+                  background: 'white',
+                }}
+              >
+                <Stack gap="lg">
+                  <div>
+                    <Text size="lg" fw={600} mb="xs" style={{ color: 'var(--color-burgundy)' }}>
+                      Add Bottle Photo (Optional)
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      Take a photo of your bottle to help identify it later. You can skip this step if you prefer.
+                    </Text>
+                  </div>
+
+                  <ImageUpload
+                    currentImageUrl={bottleImageUrl}
+                    onImageUploaded={handlePhotoUploaded}
+                    onImageRemoved={() => setBottleImageUrl(null)}
+                    label=""
+                    description=""
+                  />
+
+                  <Group gap="md">
+                    <Button variant="outline" onClick={() => setScanState('results')}>
+                      Back
+                    </Button>
+                    <Button
+                      variant="subtle"
+                      onClick={handleSkipPhoto}
+                      style={{ color: 'var(--color-wine)' }}
+                    >
+                      Skip Photo
+                    </Button>
+                    <Button
+                      flex={1}
+                      onClick={() => setScanState('bottle-details')}
+                      disabled={!bottleImageUrl}
+                      style={{
+                        background: bottleImageUrl ? 'var(--gradient-wine)' : undefined,
+                        color: 'white',
+                      }}
+                    >
+                      Continue
+                    </Button>
+                  </Group>
+                </Stack>
+              </Card>
+            </Stack>
+          )}
+
           {/* Bottle Details State */}
           {scanState === 'bottle-details' && selectedProduct && (
             <Stack gap="lg">
@@ -1029,7 +1133,7 @@ export default function ScanBottlePage() {
                   />
 
                   <Group gap="md">
-                    <Button variant="outline" onClick={() => setScanState('results')}>
+                    <Button variant="outline" onClick={() => setScanState('bottle-photo')}>
                       Back
                     </Button>
                     <Button

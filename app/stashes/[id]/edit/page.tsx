@@ -26,21 +26,38 @@ import {
   SegmentedControl,
   SimpleGrid
 } from '@mantine/core'
-import { IconPlus, IconTrash, IconArrowLeft, IconInfoCircle, IconTemperature, IconDroplet, IconBox, IconAlertCircle, IconWand, IconSettings } from '@tabler/icons-react'
+import { IconPlus, IconTrash, IconArrowLeft, IconInfoCircle, IconTemperature, IconDroplet, IconBox, IconAlertCircle, IconWand, IconSettings, IconGripVertical } from '@tabler/icons-react'
 import { notifications } from '@mantine/notifications'
 import Link from 'next/link'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 type SetupMode = 'quick' | 'advanced'
 
 interface ShelfFormData {
-  id?: string
+  id?: string // Optional ID - may be temporary for new shelves
   name: string
   order: number
   capacity: number | null
   temp: number | null
   humidity: number | null
   description: string | null
-  itemCount?: number
+  itemCount?: number // Number of bottles on the shelf (read-only)
 }
 
 interface ShelfPreset {
@@ -112,6 +129,140 @@ const SHELF_PRESETS: ShelfPreset[] = [
   },
 ]
 
+// Sortable Shelf Component
+interface SortableShelfProps {
+  shelf: ShelfFormData
+  index: number
+  totalShelves: number
+  onUpdate: (index: number, field: keyof ShelfFormData, value: any) => void
+  onRemove: (index: number) => void
+}
+
+function SortableShelf({ shelf, index, totalShelves, onUpdate, onRemove }: SortableShelfProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: shelf.id || `shelf-new-${index}` })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <Paper
+      ref={setNodeRef}
+      style={{
+        ...style,
+        borderColor: 'var(--color-beige)',
+        background: 'white'
+      }}
+      p="md"
+      withBorder
+    >
+      <Stack gap="sm">
+        <Group justify="space-between" align="flex-start">
+          <Group gap="xs" style={{ flex: 1 }}>
+            <ActionIcon
+              {...attributes}
+              {...listeners}
+              variant="subtle"
+              style={{ 
+                cursor: isDragging ? 'grabbing' : 'grab', 
+                color: 'var(--color-wine)',
+                transition: 'opacity 0.2s'
+              }}
+              aria-label="Drag to reorder"
+              title="Drag to reorder"
+            >
+              <IconGripVertical size={20} />
+            </ActionIcon>
+            <TextInput
+              placeholder="Shelf name"
+              value={shelf.name}
+              onChange={(e) => onUpdate(index, 'name', e.target.value)}
+              style={{ flex: 1 }}
+              required
+            />
+          </Group>
+          <Group gap="xs">
+            {shelf.itemCount !== undefined && shelf.itemCount > 0 && (
+              <Badge variant="light" color="blue" size="sm">
+                {shelf.itemCount} {shelf.itemCount === 1 ? 'bottle' : 'bottles'}
+              </Badge>
+            )}
+            <Badge variant="light" color="wine" size="lg">
+              #{shelf.order}
+            </Badge>
+            {totalShelves > 1 && (
+              <ActionIcon
+                color="red"
+                variant="subtle"
+                onClick={() => onRemove(index)}
+                disabled={shelf.itemCount !== undefined && shelf.itemCount > 0}
+                title={shelf.itemCount && shelf.itemCount > 0 ? 'Cannot delete shelf with bottles' : 'Delete shelf'}
+              >
+                <IconTrash size={18} />
+              </ActionIcon>
+            )}
+          </Group>
+        </Group>
+
+        {shelf.itemCount !== undefined && shelf.itemCount > 0 && (
+          <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+            <Text size="sm">
+              This shelf contains {shelf.itemCount} {shelf.itemCount === 1 ? 'bottle' : 'bottles'}. Remove all bottles before deleting.
+            </Text>
+          </Alert>
+        )}
+
+        <Group grow>
+          <NumberInput
+            label="Capacity"
+            placeholder="Max bottles"
+            leftSection={<IconBox size={16} />}
+            value={shelf.capacity || ''}
+            onChange={(value) => onUpdate(index, 'capacity', typeof value === 'number' ? value : null)}
+            min={1}
+            allowDecimal={false}
+          />
+          <NumberInput
+            label="Temperature (°C)"
+            placeholder="e.g., 12"
+            leftSection={<IconTemperature size={16} />}
+            value={shelf.temp || ''}
+            onChange={(value) => onUpdate(index, 'temp', typeof value === 'number' ? value : null)}
+            allowDecimal={true}
+          />
+          <NumberInput
+            label="Humidity (%)"
+            placeholder="0-100"
+            leftSection={<IconDroplet size={16} />}
+            value={shelf.humidity || ''}
+            onChange={(value) => onUpdate(index, 'humidity', typeof value === 'number' ? value : null)}
+            min={0}
+            max={100}
+            allowDecimal={true}
+          />
+        </Group>
+
+        <Textarea
+          label="Description"
+          placeholder="Optional shelf description..."
+          value={shelf.description || ''}
+          onChange={(e) => onUpdate(index, 'description', e.target.value || null)}
+          minRows={2}
+        />
+      </Stack>
+    </Paper>
+  )
+}
+
 export default function EditStashPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -147,6 +298,14 @@ export default function EditStashPage() {
   })
   const [applyBulkSettings, setApplyBulkSettings] = useState(false)
 
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/signin')
@@ -172,10 +331,10 @@ export default function EditStashPage() {
         
         // Load shelves
         if (data.shelves && data.shelves.length > 0) {
-          const shelvesData = data.shelves.map(shelf => ({
+          const shelvesData = data.shelves.map((shelf, index) => ({
             id: shelf.id,
             name: shelf.name,
-            order: shelf.order ?? 1,
+            order: shelf.order ?? (index + 1),
             capacity: shelf.capacity,
             temp: shelf.temp,
             humidity: shelf.humidity,
@@ -185,9 +344,9 @@ export default function EditStashPage() {
           setShelves(shelvesData)
           setHasMultipleShelves(data.shelves.length > 1 || data.shelves[0].name !== 'Default Shelf')
         } else {
-          // No shelves, create default
+          // No shelves, create default with temporary ID
           setShelves([
-            { name: 'Default Shelf', order: 1, capacity: null, temp: null, humidity: null, description: null }
+            { id: `temp-${Date.now()}`, name: 'Default Shelf', order: 1, capacity: null, temp: null, humidity: null, description: null }
           ])
           setHasMultipleShelves(false)
         }
@@ -212,6 +371,7 @@ export default function EditStashPage() {
     if (typeof customShelfCount === 'number' && typeof customShelfCapacity === 'number') {
       if (customShelfCount > 0 && customShelfCount <= 100 && customShelfCapacity > 0 && customShelfCapacity <= 1000) {
         return Array.from({ length: customShelfCount }, (_, i) => ({
+          id: `temp-${Date.now()}-${i}`,
           name: `Shelf ${i + 1}`,
           order: i + 1,
           capacity: customShelfCapacity,
@@ -230,6 +390,7 @@ export default function EditStashPage() {
       const preset = SHELF_PRESETS.find(p => p.value === quickPreset)
       if (preset) {
         return Array.from({ length: preset.shelves }, (_, i) => ({
+          id: `temp-${Date.now()}-${i}`,
           name: preset.shelves === 1 ? 'Main Shelf' : `Shelf ${i + 1}`,
           order: i + 1,
           capacity: preset.capacity,
@@ -242,6 +403,7 @@ export default function EditStashPage() {
     
     // Default: single shelf
     return [{
+      id: `temp-${Date.now()}`,
       name: 'Main Shelf',
       order: 1,
       capacity: 12,
@@ -255,9 +417,12 @@ export default function EditStashPage() {
 
   const handleAddShelf = () => {
     const newOrder = shelves.length + 1
+    // Generate a temporary unique ID for new shelves
+    const tempId = `temp-${Date.now()}`
     setShelves([
       ...shelves,
       {
+        id: tempId,
         name: `Shelf ${newOrder}`,
         order: newOrder,
         capacity: applyBulkSettings ? bulkSettings.capacity : null,
@@ -317,6 +482,35 @@ export default function EditStashPage() {
       message: 'Bulk settings have been applied to all shelves',
       color: 'green',
     })
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (over && active.id !== over.id) {
+      setShelves((items) => {
+        const oldIndex = items.findIndex((item) => (item.id || `shelf-new-${items.indexOf(item)}`) === active.id)
+        const newIndex = items.findIndex((item) => (item.id || `shelf-new-${items.indexOf(item)}`) === over.id)
+        
+        if (oldIndex === -1 || newIndex === -1) {
+          return items
+        }
+        
+        const newItems = arrayMove(items, oldIndex, newIndex)
+        // Update order numbers to reflect new positions
+        return newItems.map((item, index) => ({
+          ...item,
+          order: index + 1
+        }))
+      })
+      
+      notifications.show({
+        title: 'Shelves reordered',
+        message: 'Don\'t forget to save your changes',
+        color: 'blue',
+        autoClose: 3000,
+      })
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -682,21 +876,25 @@ export default function EditStashPage() {
                 {/* Advanced Setup Mode */}
                 {setupMode === 'advanced' && (
                   <>
-                    <Switch
-                      label="Configure multiple shelves"
-                      checked={hasMultipleShelves}
-                      onChange={(e) => {
-                        const checked = e.currentTarget.checked
-                        setHasMultipleShelves(checked)
-                        if (!checked && shelves.length > 1) {
-                          // Keep only the first shelf
-                          setShelves([shelves[0]])
-                        }
-                      }}
-                      styles={{
-                        label: { color: 'var(--color-brown)', fontWeight: 500 }
-                      }}
-                    />
+                    <Box>
+                      <Switch
+                        label="Configure multiple shelves"
+                        description="Organize your bottles across different shelves with specific capacities and storage conditions"
+                        checked={hasMultipleShelves}
+                        onChange={(e) => {
+                          const checked = e.currentTarget.checked
+                          setHasMultipleShelves(checked)
+                          if (!checked && shelves.length > 1) {
+                            // Keep only the first shelf
+                            setShelves([shelves[0]])
+                          }
+                        }}
+                        styles={{
+                          label: { color: 'var(--color-brown)', fontWeight: 500 },
+                          description: { marginTop: 4 }
+                        }}
+                      />
+                    </Box>
 
                 {hasMultipleShelves && (
                   <>
@@ -779,102 +977,48 @@ export default function EditStashPage() {
                         </Button>
                       </Group>
 
-                      <Stack gap="md">
-                        {shelves.map((shelf, index) => (
-                          <Paper
-                            key={shelf.id || index}
-                            p="md"
-                            withBorder
-                            style={{ borderColor: 'var(--color-beige)', background: 'white' }}
-                          >
-                            <Stack gap="sm">
-                              <Group justify="space-between" align="flex-start">
-                                <TextInput
-                                  placeholder="Shelf name"
-                                  value={shelf.name}
-                                  onChange={(e) => handleUpdateShelf(index, 'name', e.target.value)}
-                                  style={{ flex: 1 }}
-                                  required
-                                />
-                                <Group gap="xs">
-                                  {shelf.itemCount !== undefined && shelf.itemCount > 0 && (
-                                    <Badge variant="light" color="blue" size="sm">
-                                      {shelf.itemCount} {shelf.itemCount === 1 ? 'bottle' : 'bottles'}
-                                    </Badge>
-                                  )}
-                                  <Badge variant="light" color="wine" size="lg">
-                                    #{shelf.order}
-                                  </Badge>
-                                  {shelves.length > 1 && (
-                                    <ActionIcon
-                                      color="red"
-                                      variant="subtle"
-                                      onClick={() => handleRemoveShelf(index)}
-                                      disabled={shelf.itemCount !== undefined && shelf.itemCount > 0}
-                                      title={shelf.itemCount && shelf.itemCount > 0 ? 'Cannot delete shelf with bottles' : 'Delete shelf'}
-                                    >
-                                      <IconTrash size={18} />
-                                    </ActionIcon>
-                                  )}
-                                </Group>
-                              </Group>
+                      {shelves.length > 0 && (
+                        <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light" mb="md">
+                          <Text size="sm">
+                            <strong>Tip:</strong> Drag the grip icon to reorder shelves
+                          </Text>
+                        </Alert>
+                      )}
 
-                              {shelf.itemCount !== undefined && shelf.itemCount > 0 && (
-                                <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-                                  <Text size="sm">
-                                    This shelf contains {shelf.itemCount} {shelf.itemCount === 1 ? 'bottle' : 'bottles'}. Remove all bottles before deleting.
-                                  </Text>
-                                </Alert>
-                              )}
-
-                              <Group grow>
-                                <NumberInput
-                                  label="Capacity"
-                                  placeholder="Max bottles"
-                                  leftSection={<IconBox size={16} />}
-                                  value={shelf.capacity || ''}
-                                  onChange={(value) => handleUpdateShelf(index, 'capacity', typeof value === 'number' ? value : null)}
-                                  min={1}
-                                  allowDecimal={false}
-                                />
-                                <NumberInput
-                                  label="Temperature (°C)"
-                                  placeholder="e.g., 12"
-                                  leftSection={<IconTemperature size={16} />}
-                                  value={shelf.temp || ''}
-                                  onChange={(value) => handleUpdateShelf(index, 'temp', typeof value === 'number' ? value : null)}
-                                  allowDecimal={true}
-                                />
-                                <NumberInput
-                                  label="Humidity (%)"
-                                  placeholder="0-100"
-                                  leftSection={<IconDroplet size={16} />}
-                                  value={shelf.humidity || ''}
-                                  onChange={(value) => handleUpdateShelf(index, 'humidity', typeof value === 'number' ? value : null)}
-                                  min={0}
-                                  max={100}
-                                  allowDecimal={true}
-                                />
-                              </Group>
-
-                              <Textarea
-                                label="Description"
-                                placeholder="Optional shelf description..."
-                                value={shelf.description || ''}
-                                onChange={(e) => handleUpdateShelf(index, 'description', e.target.value || null)}
-                                minRows={2}
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <SortableContext
+                          items={shelves.map((shelf, idx) => shelf.id || `shelf-new-${idx}`)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <Stack gap="md">
+                            {shelves.map((shelf, index) => (
+                              <SortableShelf
+                                key={shelf.id || `shelf-new-${index}`}
+                                shelf={shelf}
+                                index={index}
+                                totalShelves={shelves.length}
+                                onUpdate={handleUpdateShelf}
+                                onRemove={handleRemoveShelf}
                               />
-                            </Stack>
-                          </Paper>
-                        ))}
-                      </Stack>
+                            ))}
+                          </Stack>
+                        </SortableContext>
+                      </DndContext>
                     </div>
                   </>
                 )}
 
                 {!hasMultipleShelves && setupMode === 'advanced' && (
                   <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-                    Your stash has a single shelf. Enable multiple shelves to add more and customize each one.
+                    <Text size="sm" mb="xs" fw={500}>Simple Stash Mode</Text>
+                    <Text size="sm">
+                      Your stash uses a single default shelf. Bottles are added directly to your stash without worrying about shelf organization. 
+                      Enable "Configure multiple shelves" if you want to organize bottles across different shelves with specific capacities and conditions.
+                    </Text>
                   </Alert>
                 )}
                   </>

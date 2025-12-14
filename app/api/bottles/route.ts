@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { isCloudinaryUrl } from '@/lib/cloudinary'
 
 export async function GET(request: NextRequest) {
   try {
@@ -84,7 +85,8 @@ export async function POST(request: NextRequest) {
       purchaseDate,
       purchaseLocation,
       notes,
-      amountRemaining
+      amountRemaining,
+      imageUrl
     } = body
 
     if (!productId) {
@@ -106,6 +108,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate Cloudinary URL if provided
+    if (imageUrl && !isCloudinaryUrl(imageUrl)) {
+      return NextResponse.json(
+        { error: 'Invalid image URL. Must be a Cloudinary URL.' },
+        { status: 400 }
+      )
+    }
+
     const bottle = await prisma.bottle.create({
       data: {
         productId,
@@ -116,6 +126,7 @@ export async function POST(request: NextRequest) {
         purchaseLocation: purchaseLocation || null,
         notes: notes || null,
         amountRemaining: amountRemaining ?? 100,
+        imageUrl: imageUrl || null,
         userId: session.user.id
       },
       include: {

@@ -22,8 +22,10 @@ import {
   Alert
 } from '@mantine/core'
 import Link from 'next/link'
-import { IconArrowLeft, IconBottle, IconCalendar, IconCurrencyDollar, IconEdit, IconTrash, IconCheck, IconAlertCircle } from '@tabler/icons-react'
+import { IconArrowLeft, IconBottle, IconCalendar, IconCurrencyDollar, IconEdit, IconTrash, IconCheck, IconAlertCircle, IconCamera } from '@tabler/icons-react'
 import { notifications } from '@mantine/notifications'
+import { ImageUpload } from '@/components/bottles/ImageUpload'
+import { QuickAddToShelf } from '@/components/bottles/QuickAddToShelf'
 
 interface Bottle {
   id: string
@@ -36,6 +38,7 @@ interface Bottle {
   finishDate: string | null
   rating: number | null
   notes: string | null
+  imageUrl: string | null
   product: {
     id: string
     name: string
@@ -59,6 +62,7 @@ interface Bottle {
     shelf: {
       name: string
       stash: {
+        id: string
         name: string
       } | null
     }
@@ -76,6 +80,8 @@ export default function BottleDetailPage() {
   const [markCompleteModalOpen, setMarkCompleteModalOpen] = useState(false)
   const [processing, setProcessing] = useState(false)
   const [rating, setRating] = useState<number | ''>('')
+  const [imageModalOpen, setImageModalOpen] = useState(false)
+  const [updatingImage, setUpdatingImage] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -194,6 +200,78 @@ export default function BottleDetailPage() {
       })
     } finally {
       setProcessing(false)
+    }
+  }
+
+  const handleImageUploaded = async (url: string) => {
+    if (!bottle) return
+    
+    setUpdatingImage(true)
+    try {
+      const response = await fetch(`/api/bottles/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrl: url
+        })
+      })
+
+      if (response.ok) {
+        notifications.show({
+          title: 'Photo updated!',
+          message: 'Your bottle photo has been updated',
+          color: 'green',
+          icon: <IconCheck size={16} />
+        })
+        setImageModalOpen(false)
+        fetchBottle() // Refresh to show new image
+      } else {
+        throw new Error('Failed to update image')
+      }
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to update bottle photo',
+        color: 'red'
+      })
+    } finally {
+      setUpdatingImage(false)
+    }
+  }
+
+  const handleImageRemoved = async () => {
+    if (!bottle) return
+    
+    setUpdatingImage(true)
+    try {
+      const response = await fetch(`/api/bottles/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrl: null
+        })
+      })
+
+      if (response.ok) {
+        notifications.show({
+          title: 'Photo removed',
+          message: 'Bottle photo has been removed',
+          color: 'green',
+          icon: <IconCheck size={16} />
+        })
+        setImageModalOpen(false)
+        fetchBottle() // Refresh to remove image
+      } else {
+        throw new Error('Failed to remove image')
+      }
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to remove bottle photo',
+        color: 'red'
+      })
+    } finally {
+      setUpdatingImage(false)
     }
   }
 
@@ -434,7 +512,7 @@ export default function BottleDetailPage() {
         </Card>
 
         {/* Location */}
-        {bottle.shelfItem && (
+        {bottle.shelfItem ? (
           <Card 
             withBorder 
             p="lg"
@@ -443,21 +521,101 @@ export default function BottleDetailPage() {
               background: 'white'
             }}
           >
-            <Title order={3} mb="md" style={{ color: 'var(--color-burgundy)' }}>
-              Location
-            </Title>
+            <Group justify="space-between" mb="md">
+              <Title order={3} style={{ color: 'var(--color-burgundy)' }}>
+                Location
+              </Title>
+              {bottle.shelfItem.shelf.stash && (
+                <Link href={`/stashes/${bottle.shelfItem.shelf.stash.id}`} style={{ textDecoration: 'none' }}>
+                  <Button variant="light" size="xs" style={{ color: 'var(--color-wine)' }}>
+                    View Stash
+                  </Button>
+                </Link>
+              )}
+            </Group>
             <Stack gap="sm">
-              <Group justify="space-between">
-                <Text c="dimmed">Stash</Text>
-                <Text fw={500}>{bottle.shelfItem.shelf.stash?.name || 'N/A'}</Text>
-              </Group>
+              {bottle.shelfItem.shelf.stash && (
+                <Group justify="space-between">
+                  <Text c="dimmed">Stash</Text>
+                  <Text fw={500}>{bottle.shelfItem.shelf.stash.name}</Text>
+                </Group>
+              )}
               <Group justify="space-between">
                 <Text c="dimmed">Shelf</Text>
-                <Text fw={500}>{bottle.shelfItem.shelf.name}</Text>
+                <Link href={`/shelves/${bottle.shelfItem.shelfId}`} style={{ textDecoration: 'none' }}>
+                  <Text fw={500} style={{ color: 'var(--color-wine)', cursor: 'pointer' }}>
+                    {bottle.shelfItem.shelf.name}
+                  </Text>
+                </Link>
               </Group>
             </Stack>
           </Card>
+        ) : !bottle.finished && (
+          <QuickAddToShelf
+            bottleId={bottle.id}
+            bottleName={getProductDisplayName()}
+            onSuccess={fetchBottle}
+          />
         )}
+
+        {/* Bottle Photo */}
+        <Card 
+          withBorder 
+          p="lg"
+          style={{ 
+            borderColor: 'var(--color-beige)',
+            background: 'white'
+          }}
+        >
+          <Title order={3} mb="md" style={{ color: 'var(--color-burgundy)' }}>
+            Bottle Photo
+          </Title>
+          {bottle.imageUrl ? (
+            <Box>
+              <Box
+                style={{
+                  width: '100%',
+                  maxWidth: '500px',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  border: '2px solid var(--color-beige)',
+                  marginBottom: '1rem'
+                }}
+              >
+                <img
+                  src={bottle.imageUrl}
+                  alt={getProductDisplayName()}
+                  style={{ width: '100%', display: 'block' }}
+                />
+              </Box>
+              <Group gap="sm">
+                <Button
+                  variant="light"
+                  leftSection={<IconCamera size={16} />}
+                  onClick={() => setImageModalOpen(true)}
+                >
+                  Replace Photo
+                </Button>
+              </Group>
+            </Box>
+          ) : (
+            <Box>
+              <Stack gap="md" align="center" py="xl">
+                <IconCamera size={48} style={{ color: 'var(--color-wine)', opacity: 0.5 }} />
+                <Text c="dimmed" ta="center">
+                  No photo for this bottle yet
+                </Text>
+                <Button
+                  leftSection={<IconCamera size={16} />}
+                  onClick={() => setImageModalOpen(true)}
+                  style={{ background: 'var(--gradient-wine)', color: 'white' }}
+                >
+                  Add Photo
+                </Button>
+              </Stack>
+            </Box>
+          )}
+        </Card>
 
         {/* Notes */}
         {bottle.notes && (
@@ -561,6 +719,32 @@ export default function BottleDetailPage() {
             Mark as Complete
           </Button>
         </Group>
+      </Stack>
+    </Modal>
+
+    {/* Image Upload/Replace Modal */}
+    <Modal
+      opened={imageModalOpen}
+      onClose={() => setImageModalOpen(false)}
+      title={bottle?.imageUrl ? 'Replace Bottle Photo' : 'Add Bottle Photo'}
+      size="lg"
+      centered
+    >
+      <Stack gap="md">
+        {!updatingImage && (
+          <ImageUpload
+            currentImageUrl={bottle?.imageUrl}
+            onImageUploaded={handleImageUploaded}
+            onImageRemoved={handleImageRemoved}
+            label=""
+            description=""
+          />
+        )}
+        {updatingImage && (
+          <Box py="xl" style={{ textAlign: 'center' }}>
+            <Text c="dimmed">Updating photo...</Text>
+          </Box>
+        )}
       </Stack>
     </Modal>
     </Box>

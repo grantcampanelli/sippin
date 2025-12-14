@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { isCloudinaryUrl } from '@/lib/cloudinary'
 
 export async function GET(
   request: NextRequest,
@@ -102,7 +103,16 @@ export async function PUT(
     if (amountRemaining !== undefined) updateData.amountRemaining = amountRemaining
     if (notes !== undefined) updateData.notes = notes
     if (rating !== undefined) updateData.rating = rating
-    if (imageUrl !== undefined) updateData.imageUrl = imageUrl
+    if (imageUrl !== undefined) {
+      // Validate Cloudinary URL if provided
+      if (imageUrl && !isCloudinaryUrl(imageUrl)) {
+        return NextResponse.json(
+          { error: 'Invalid image URL. Must be a Cloudinary URL.' },
+          { status: 400 }
+        )
+      }
+      updateData.imageUrl = imageUrl
+    }
     if (barcode !== undefined) updateData.barcode = barcode
     if (giftFrom !== undefined) updateData.giftFrom = giftFrom
     if (giftOccasion !== undefined) updateData.giftOccasion = giftOccasion
