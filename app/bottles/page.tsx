@@ -25,7 +25,7 @@ import {
   Autocomplete,
   Divider,
 } from '@mantine/core'
-import { IconSearch, IconBottle, IconFilter, IconPlus, IconX, IconCamera } from '@tabler/icons-react'
+import { IconSearch, IconBottle, IconFilter, IconPlus, IconX, IconCamera, IconMapPin } from '@tabler/icons-react'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import Link from 'next/link'
@@ -109,6 +109,8 @@ export default function BottlesPage() {
   const [quickSearchProducts, setQuickSearchProducts] = useState<Product[]>([])
   const [showQuickSearch, setShowQuickSearch] = useState(true)
   const [selectedProductData, setSelectedProductData] = useState<Product | null>(null)
+  const [stashSuggestionOpened, setStashSuggestionOpened] = useState(false)
+  const [userHasStashes, setUserHasStashes] = useState<boolean | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -118,6 +120,7 @@ export default function BottlesPage() {
 
     if (status === 'authenticated') {
       fetchBottles()
+      checkUserHasStashes()
     }
   }, [status, router])
 
@@ -185,6 +188,21 @@ export default function BottlesPage() {
       console.error('Error fetching bottles:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const checkUserHasStashes = async () => {
+    try {
+      const response = await fetch('/api/stashes')
+      if (response.ok) {
+        const stashes = await response.json()
+        setUserHasStashes(stashes.length > 0)
+        return stashes.length > 0
+      }
+      return false
+    } catch (error) {
+      console.error('Error checking stashes:', error)
+      return false
     }
   }
 
@@ -501,6 +519,8 @@ export default function BottlesPage() {
         const failed = results.filter(r => !r.ok)
 
         if (failed.length === 0) {
+          const isFirstBottle = bottles.length === 0
+          
           notifications.show({
             title: 'Bottles added',
             message: `${quantity} ${quantity === 1 ? 'bottle has' : 'bottles have'} been added to your inventory`,
@@ -512,7 +532,17 @@ export default function BottlesPage() {
           setProductSearch('')
           setQuickSearch('')
           setQuickAddOpened(false)
-          fetchBottles()
+          await fetchBottles()
+
+          // If this was the first bottle and user has no stashes, suggest creating one
+          if (isFirstBottle) {
+            const hasStashes = await checkUserHasStashes()
+            if (!hasStashes) {
+              setTimeout(() => {
+                setStashSuggestionOpened(true)
+              }, 500)
+            }
+          }
         } else {
           const error = await failed[0].json()
           notifications.show({
@@ -648,6 +678,54 @@ export default function BottlesPage() {
             </Group>
           </Group>
 
+          {/* Helpful tip when user has bottles but no stashes */}
+          {bottles.length > 0 && userHasStashes === false && (
+            <Card
+              padding="lg"
+              radius="md"
+              withBorder
+              style={{
+                borderColor: 'var(--color-amber)',
+                borderWidth: 2,
+                background: 'linear-gradient(135deg, #FFF9E6 0%, #FFFBF0 100%)',
+              }}
+            >
+              <Group justify="space-between" align="center">
+                <Group gap="md">
+                  <Box
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      background: 'var(--gradient-amber)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <IconMapPin size={24} color="white" />
+                  </Box>
+                  <div>
+                    <Text fw={600} size="md" mb={4} style={{ color: 'var(--color-burgundy)' }}>
+                      Keep your collection organized
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      Create a storage location to organize your {bottles.length} {bottles.length === 1 ? 'bottle' : 'bottles'} by location
+                    </Text>
+                  </div>
+                </Group>
+                <Button
+                  component={Link}
+                  href="/stashes/create"
+                  leftSection={<IconPlus size={16} />}
+                  style={{ background: 'var(--gradient-amber)' }}
+                >
+                  Create Storage Location
+                </Button>
+              </Group>
+            </Card>
+          )}
+
           {/* Search and Filters */}
           <Card
             padding="lg"
@@ -771,13 +849,66 @@ export default function BottlesPage() {
                 textAlign: 'center',
               }}
             >
-              <Text ta="center" c="dimmed" size="lg">
-                {searchQuery
-                  ? `No bottles found matching "${searchQuery}"`
-                  : showFinished
-                  ? 'No finished bottles yet.'
-                  : 'No active bottles yet.'}
-              </Text>
+              {searchQuery ? (
+                <Text ta="center" c="dimmed" size="lg">
+                  No bottles found matching "{searchQuery}"
+                </Text>
+              ) : showFinished ? (
+                <Text ta="center" c="dimmed" size="lg">
+                  No finished bottles yet.
+                </Text>
+              ) : bottles.length === 0 ? (
+                <Stack gap="xl" align="center">
+                  <Box>
+                    <Title order={2} ta="center" mb="md" style={{ color: 'var(--color-burgundy)' }}>
+                      Start Your Collection
+                    </Title>
+                    <Text size="lg" c="dimmed" ta="center" mb="xl" style={{ maxWidth: '500px', margin: '0 auto' }}>
+                      Add your first bottle to begin tracking your wine and spirits collection.
+                    </Text>
+                  </Box>
+                  <Group gap="md" justify="center">
+                    <Link href="/bottles/scan" style={{ textDecoration: 'none' }}>
+                      <Button
+                        leftSection={<IconCamera size={18} />}
+                        size="lg"
+                        variant="outline"
+                        style={{
+                          borderColor: 'var(--color-wine)',
+                          color: 'var(--color-wine)',
+                        }}
+                      >
+                        Scan Bottle
+                      </Button>
+                    </Link>
+                    <Button
+                      leftSection={<IconPlus size={18} />}
+                      onClick={() => setQuickAddOpened(true)}
+                      size="lg"
+                      style={{
+                        background: 'var(--gradient-wine)',
+                        color: 'white',
+                      }}
+                    >
+                      Add Manually
+                    </Button>
+                  </Group>
+                  <Box mt="lg">
+                    <Text size="sm" c="dimmed" ta="center" mb="xs">
+                      💡 Tip: After adding bottles, you can organize them in storage locations
+                    </Text>
+                    <Link href="/stashes/create" style={{ textDecoration: 'none' }}>
+                      <Button variant="subtle" size="sm" style={{ color: 'var(--color-wine)' }}>
+                        Create a Storage Location
+                      </Button>
+                    </Link>
+                  </Box>
+                </Stack>
+              ) : (
+                <Text ta="center" c="dimmed" size="lg">
+                  No active bottles yet.
+                </Text>
+              )}
             </Card>
           ) : (
             <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
@@ -1446,6 +1577,58 @@ export default function BottlesPage() {
               </Button>
             </>
           )}
+        </Stack>
+      </Modal>
+
+      {/* Stash Suggestion Modal */}
+      <Modal
+        opened={stashSuggestionOpened}
+        onClose={() => setStashSuggestionOpened(false)}
+        title="Great start! 🎉"
+        size="md"
+        centered
+        styles={{
+          title: {
+            color: 'var(--color-burgundy)',
+            fontFamily: 'var(--font-playfair)',
+            fontWeight: 600,
+            fontSize: '1.5rem',
+          },
+        }}
+      >
+        <Stack gap="lg">
+          <Text size="md">
+            You've added your first bottle! To keep your collection organized, consider creating a storage location.
+          </Text>
+          
+          <Card padding="md" radius="md" style={{ background: 'var(--color-cream)', border: '1px solid var(--color-beige)' }}>
+            <Stack gap="xs">
+              <Text fw={600} size="sm" style={{ color: 'var(--color-burgundy)' }}>
+                What's a Storage Location?
+              </Text>
+              <Text size="sm" c="dimmed">
+                A storage location (or "stash") represents a physical space like a wine cellar, liquor cabinet, or refrigerator where you keep your bottles organized on shelves.
+              </Text>
+            </Stack>
+          </Card>
+
+          <Group justify="space-between" mt="md">
+            <Button
+              variant="subtle"
+              onClick={() => setStashSuggestionOpened(false)}
+            >
+              Maybe Later
+            </Button>
+            <Button
+              component={Link}
+              href="/stashes/create"
+              leftSection={<IconPlus size={16} />}
+              style={{ background: 'var(--color-wine)' }}
+              onClick={() => setStashSuggestionOpened(false)}
+            >
+              Create Storage Location
+            </Button>
+          </Group>
         </Stack>
       </Modal>
     </Box>

@@ -16,6 +16,7 @@ import {
   IconFlame,
   IconMapPin
 } from '@tabler/icons-react'
+import { WelcomeCard } from '@/components/dashboard/WelcomeCard'
 
 async function getStats(userId: string) {
   const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/stats`, {
@@ -149,6 +150,9 @@ export default async function DashboardPage() {
 
   const completionRate = totalBottles > 0 ? (finishedBottles / totalBottles) * 100 : 0
 
+  // Check if user is new (no bottles and no stashes)
+  const isNewUser = bottles.length === 0 && stashes.length === 0
+
   return (
     <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)' }}>
       <Container size="xl" py="xl">
@@ -162,6 +166,12 @@ export default async function DashboardPage() {
               Welcome back, {session.user?.name || session.user?.email}!
             </Text>
           </Box>
+
+          {/* New User Welcome Experience */}
+          {isNewUser && <WelcomeCard />}
+
+          {!isNewUser && (
+            <>
 
           {/* Main Stats Row */}
           <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
@@ -618,6 +628,8 @@ export default async function DashboardPage() {
                 })}
               </SimpleGrid>
             </Card>
+          )}
+          </>
           )}
         </Stack>
       </Container>

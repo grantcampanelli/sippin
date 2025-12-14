@@ -366,9 +366,79 @@ export default function StashDetailPage() {
                   textAlign: 'center'
                 }}
               >
-                <Text ta="center" c="dimmed">
-                  No shelves in this stash yet.
-                </Text>
+                <Stack gap="lg" align="center">
+                  <Text ta="center" c="dimmed" size="lg">
+                    No shelves in this stash yet.
+                  </Text>
+                  {!stash.archived && (
+                    <>
+                      <Text size="sm" c="dimmed" ta="center" style={{ maxWidth: '400px' }}>
+                        You can edit this stash to add shelves, or start adding bottles which will create a default shelf.
+                      </Text>
+                      <Group gap="md">
+                        <Link href={`/stashes/${id}/edit`} style={{ textDecoration: 'none' }}>
+                          <Button variant="outline" style={{ borderColor: 'var(--color-wine)', color: 'var(--color-wine)' }}>
+                            Edit Stash
+                          </Button>
+                        </Link>
+                        <Button
+                          leftSection={<IconPlus size={16} />}
+                          onClick={() => {
+                            setSelectedShelfId(null)
+                            setAddBottlesModalOpen(true)
+                          }}
+                          style={{ background: 'var(--color-wine)' }}
+                        >
+                          Add Bottles
+                        </Button>
+                      </Group>
+                    </>
+                  )}
+                </Stack>
+              </Card>
+            ) : totalBottles === 0 ? (
+              <Card 
+                p="xl" 
+                withBorder
+                style={{ 
+                  borderColor: 'var(--color-beige)',
+                  background: 'white',
+                  textAlign: 'center'
+                }}
+              >
+                <Stack gap="xl" align="center">
+                  <Box>
+                    <Title order={3} ta="center" mb="md" style={{ color: 'var(--color-burgundy)' }}>
+                      Ready to Add Bottles? 🍷
+                    </Title>
+                    <Text size="lg" c="dimmed" ta="center" mb="xl" style={{ maxWidth: '500px', margin: '0 auto' }}>
+                      Your storage is set up! Now add bottles to start organizing your collection.
+                    </Text>
+                  </Box>
+                  {!stash.archived && (
+                    <Button
+                      leftSection={<IconPlus size={18} />}
+                      onClick={() => {
+                        setSelectedShelfId(null)
+                        setAddBottlesModalOpen(true)
+                      }}
+                      size="lg"
+                      style={{ background: 'var(--color-wine)' }}
+                    >
+                      Add Your First Bottle
+                    </Button>
+                  )}
+                  <Box mt="lg">
+                    <Text size="sm" c="dimmed" ta="center" mb="xs">
+                      💡 Don't have bottles in your inventory yet?
+                    </Text>
+                    <Link href="/bottles" style={{ textDecoration: 'none' }}>
+                      <Button variant="subtle" size="sm" style={{ color: 'var(--color-wine)' }}>
+                        Go to Bottles Page
+                      </Button>
+                    </Link>
+                  </Box>
+                </Stack>
               </Card>
             ) : (
               <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">

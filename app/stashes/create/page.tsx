@@ -236,6 +236,20 @@ export default function CreateStashPage() {
     })
   }
 
+  const checkUserHasBottles = async () => {
+    try {
+      const response = await fetch('/api/bottles')
+      if (response.ok) {
+        const bottles = await response.json()
+        return bottles.length > 0
+      }
+      return false
+    } catch (error) {
+      console.error('Error checking bottles:', error)
+      return false
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -270,6 +284,9 @@ export default function CreateStashPage() {
 
     setLoading(true)
     try {
+      // Check if user has bottles before creating stash
+      const hasBottles = await checkUserHasBottles()
+      
       const response = await fetch('/api/stashes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -284,11 +301,24 @@ export default function CreateStashPage() {
 
       if (response.ok) {
         const stash = await response.json()
-        notifications.show({
-          title: 'Stash created!',
-          message: `${stash.name} has been created successfully`,
-          color: 'green',
-        })
+        
+        // Show different notifications based on whether user has bottles
+        if (hasBottles) {
+          notifications.show({
+            title: 'Stash created! 🎉',
+            message: 'Ready to organize your bottles? Add them to your new storage location.',
+            color: 'green',
+            autoClose: 5000,
+          })
+        } else {
+          notifications.show({
+            title: 'Stash created! 🎉',
+            message: 'Now add your first bottle to start building your collection.',
+            color: 'green',
+            autoClose: 5000,
+          })
+        }
+        
         router.push(`/stashes/${stash.id}`)
       } else {
         const error = await response.json()

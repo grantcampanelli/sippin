@@ -148,22 +148,41 @@ export default function StashesPage() {
               textAlign: 'center'
             }}
           >
-            <Stack gap="md" align="center">
-              <Text ta="center" c="dimmed" size="lg">
-                {showArchived 
-                  ? 'No archived stashes.'
-                  : 'No stashes yet. Create your first stash to get started!'}
-              </Text>
-              {!showArchived && (
-                <Link href="/stashes/create" style={{ textDecoration: 'none' }}>
-                  <Button
-                    leftSection={<IconPlus size={16} />}
-                    style={{ background: 'var(--color-wine)' }}
-                    size="lg"
-                  >
-                    Create Your First Stash
-                  </Button>
-                </Link>
+            <Stack gap="xl" align="center">
+              {showArchived ? (
+                <Text ta="center" c="dimmed" size="lg">
+                  No archived stashes.
+                </Text>
+              ) : (
+                <>
+                  <Box>
+                    <Title order={2} ta="center" mb="md" style={{ color: 'var(--color-burgundy)' }}>
+                      Create Your First Storage Location
+                    </Title>
+                    <Text size="lg" c="dimmed" ta="center" mb="xl" style={{ maxWidth: '500px', margin: '0 auto' }}>
+                      Organize your collection by setting up storage spaces like wine cellars, liquor cabinets, or refrigerators.
+                    </Text>
+                  </Box>
+                  <Link href="/stashes/create" style={{ textDecoration: 'none' }}>
+                    <Button
+                      leftSection={<IconPlus size={18} />}
+                      style={{ background: 'var(--color-wine)' }}
+                      size="lg"
+                    >
+                      Create Your First Stash
+                    </Button>
+                  </Link>
+                  <Box mt="lg">
+                    <Text size="sm" c="dimmed" ta="center" mb="xs">
+                      💡 Tip: Already have bottles? Add them to your new stash after creation
+                    </Text>
+                    <Link href="/bottles" style={{ textDecoration: 'none' }}>
+                      <Button variant="subtle" size="sm" style={{ color: 'var(--color-wine)' }}>
+                        View Your Bottles
+                      </Button>
+                    </Link>
+                  </Box>
+                </>
               )}
             </Stack>
           </Card>
