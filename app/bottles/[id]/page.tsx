@@ -26,6 +26,7 @@ import { IconArrowLeft, IconBottle, IconCalendar, IconCurrencyDollar, IconEdit, 
 import { notifications } from '@mantine/notifications'
 import { ImageUpload } from '@/components/bottles/ImageUpload'
 import { QuickAddToShelf } from '@/components/bottles/QuickAddToShelf'
+import { TastingLog } from '@/components/bottles/TastingLog'
 
 interface Bottle {
   id: string
@@ -596,10 +597,10 @@ export default function BottleDetailPage() {
 
         {/* Notes */}
         {bottle.notes && (
-          <Card 
-            withBorder 
+          <Card
+            withBorder
             p="lg"
-            style={{ 
+            style={{
               borderColor: 'var(--color-beige)',
               background: 'white'
             }}
@@ -610,6 +611,8 @@ export default function BottleDetailPage() {
             <Text style={{ color: 'var(--color-brown)' }}>{bottle.notes}</Text>
           </Card>
         )}
+
+        <TastingLog bottleId={bottle.id} />
       </Stack>
     </Container>
 

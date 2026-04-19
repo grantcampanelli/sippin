@@ -205,16 +205,33 @@ model Bottle {
   productId       String
   product         Product    @relation(fields: [productId], references: [id])
   shelfItem       ShelfItem?
-  
+  tastingEntries  TastingEntry[]
+
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
-  
+
   @@index([userId])
   @@index([userId, finished])
   @@index([userId, productId])
   @@index([productId])
   @@index([finished])
   @@index([purchaseDate])
+}
+
+// A single tasting event — one bottle can have many.
+model TastingEntry {
+  id        String   @id @default(cuid())
+  bottleId  String
+  bottle    Bottle   @relation(fields: [bottleId], references: [id], onDelete: Cascade)
+  tastedAt  DateTime @default(now())
+  nose      String?  @db.Text
+  palate    String?  @db.Text
+  finish    String?  @db.Text
+  rating    Int?     // 0-100 scale, matches wine-critic convention
+  context   String?  // "Thanksgiving", "with Mike", etc.
+  createdAt DateTime @default(now())
+
+  @@index([bottleId, tastedAt])
 }
 
 // ============================================================================
