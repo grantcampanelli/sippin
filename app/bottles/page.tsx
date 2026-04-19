@@ -24,10 +24,28 @@ import {
   Autocomplete,
   Divider,
 } from '@mantine/core'
-import { IconSearch, IconBottle, IconFilter, IconPlus, IconX, IconCamera, IconMapPin, IconStack2 } from '@tabler/icons-react'
+import { IconSearch, IconBottle, IconFilter, IconPlus, IconX, IconCamera, IconMapPin, IconStack2, IconDownload } from '@tabler/icons-react'
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import Link from 'next/link'
+import Image from 'next/image'
+
+// Inject an inline Cloudinary transformation into a delivery URL. Client-safe —
+// Cloudinary encodes transformations in the URL path, so no SDK needed.
+function cloudinaryThumb(url: string | null | undefined): string | null {
+  if (!url || !url.includes('/upload/')) return null
+  return url.replace('/upload/', '/upload/w_400,h_400,c_fill,q_auto,f_auto/')
+}
+
+type SortKey = 'recent' | 'purchaseDate' | 'rating' | 'price' | 'vintage' | 'name'
+const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
+  { value: 'recent', label: 'Recently added' },
+  { value: 'purchaseDate', label: 'Purchase date (newest)' },
+  { value: 'rating', label: 'Highest rated' },
+  { value: 'price', label: 'Most expensive' },
+  { value: 'vintage', label: 'Oldest vintage' },
+  { value: 'name', label: 'Name (A–Z)' },
+]
 
 interface Bottle {
   id: string
@@ -38,6 +56,7 @@ interface Bottle {
   openDate: Date | null
   finishDate: Date | null
   rating: number | null
+  imageUrl: string | null
   product: {
     id: string
     name: string
@@ -97,6 +116,7 @@ export default function BottlesPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [showFinished, setShowFinished] = useState(false)
+  const [sortBy, setSortBy] = useState<SortKey>('recent')
   const [quickAddOpened, setQuickAddOpened] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
   const [brands, setBrands] = useState<Brand[]>([])
@@ -605,8 +625,39 @@ export default function BottlesPage() {
       })
     }
 
-    return filtered
-  }, [bottles, searchQuery, showFinished])
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case 'purchaseDate': {
+          const da = a.purchaseDate ? new Date(a.purchaseDate).getTime() : 0
+          const db = b.purchaseDate ? new Date(b.purchaseDate).getTime() : 0
+          return db - da
+        }
+        case 'rating':
+          return (b.rating ?? -1) - (a.rating ?? -1)
+        case 'price':
+          return (b.purchasePrice ?? -1) - (a.purchasePrice ?? -1)
+        case 'vintage': {
+          // Oldest first. Non-vintage or missing sort last.
+          const va = parseInt(a.product.wineData?.vintage ?? '', 10)
+          const vb = parseInt(b.product.wineData?.vintage ?? '', 10)
+          const aValid = Number.isFinite(va)
+          const bValid = Number.isFinite(vb)
+          if (aValid && bValid) return va - vb
+          if (aValid) return -1
+          if (bValid) return 1
+          return 0
+        }
+        case 'name':
+          return getProductDisplayName(a.product).localeCompare(getProductDisplayName(b.product))
+        case 'recent':
+        default:
+          // bottles arrive from API ordered by createdAt desc, preserve
+          return 0
+      }
+    })
+
+    return sorted
+  }, [bottles, searchQuery, showFinished, sortBy])
 
   const getProductDisplayName = (product: Bottle['product']) => {
     if (product.brand.type === 'WINE' && product.wineData?.vintage) {
@@ -663,6 +714,17 @@ export default function BottlesPage() {
                   Inventory
                 </Button>
               </Link>
+              <Button
+                component="a"
+                href="/api/bottles/export"
+                download
+                leftSection={<IconDownload size={18} />}
+                size="lg"
+                variant="subtle"
+                style={{ color: 'var(--color-wine)' }}
+              >
+                Export CSV
+              </Button>
               <Link href="/bottles/scan" style={{ textDecoration: 'none' }}>
                 <Button
                   leftSection={<IconCamera size={18} />}
@@ -756,7 +818,7 @@ export default function BottlesPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 size="md"
               />
-              <Group justify="space-between" align="center">
+              <Group justify="space-between" align="center" wrap="wrap">
                 <Group gap="lg">
                   <Text size="sm" fw={500} style={{ color: 'var(--color-brown)' }}>
                     {filteredBottles.length} {filteredBottles.length === 1 ? 'bottle' : 'bottles'}
@@ -768,7 +830,16 @@ export default function BottlesPage() {
                     </Text>
                   )}
                 </Group>
-                <Group gap="xs">
+                <Group gap="sm">
+                  <Select
+                    size="sm"
+                    data={SORT_OPTIONS}
+                    value={sortBy}
+                    onChange={(val) => val && setSortBy(val as SortKey)}
+                    allowDeselect={false}
+                    comboboxProps={{ withinPortal: true }}
+                    style={{ width: 200 }}
+                  />
                   <IconFilter size={18} style={{ color: 'var(--color-wine)' }} />
                   <Switch
                     label="Show finished bottles"
@@ -927,6 +998,7 @@ export default function BottlesPage() {
               {filteredBottles.map((bottle) => {
                 const product = bottle.product
                 const brand = product.brand
+                const thumb = cloudinaryThumb(bottle.imageUrl)
 
                 return (
                   <Link
@@ -949,6 +1021,41 @@ export default function BottlesPage() {
                       }}
                     >
                       <Stack gap="sm">
+                        {thumb ? (
+                          <Box
+                            style={{
+                              position: 'relative',
+                              width: '100%',
+                              aspectRatio: '1 / 1',
+                              borderRadius: 8,
+                              overflow: 'hidden',
+                              background: 'var(--color-cream)',
+                            }}
+                          >
+                            <Image
+                              src={thumb}
+                              alt={product.name}
+                              fill
+                              sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 33vw"
+                              style={{ objectFit: 'cover' }}
+                            />
+                          </Box>
+                        ) : (
+                          <Box
+                            style={{
+                              width: '100%',
+                              aspectRatio: '1 / 1',
+                              borderRadius: 8,
+                              background: 'var(--color-cream)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: 'var(--color-beige)',
+                            }}
+                          >
+                            <IconBottle size={64} />
+                          </Box>
+                        )}
                         <Group justify="space-between" align="flex-start">
                           <div style={{ flex: 1 }}>
                             <Text
