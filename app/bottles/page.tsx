@@ -28,14 +28,6 @@ import { IconSearch, IconBottle, IconFilter, IconPlus, IconX, IconCamera, IconMa
 import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import Link from 'next/link'
-import Image from 'next/image'
-
-// Inject an inline Cloudinary transformation into a delivery URL. Client-safe —
-// Cloudinary encodes transformations in the URL path, so no SDK needed.
-function cloudinaryThumb(url: string | null | undefined): string | null {
-  if (!url || !url.includes('/upload/')) return null
-  return url.replace('/upload/', '/upload/w_400,h_400,c_fill,q_auto,f_auto/')
-}
 
 type SortKey = 'recent' | 'purchaseDate' | 'rating' | 'price' | 'vintage' | 'name'
 const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
@@ -998,7 +990,6 @@ export default function BottlesPage() {
               {filteredBottles.map((bottle) => {
                 const product = bottle.product
                 const brand = product.brand
-                const thumb = cloudinaryThumb(bottle.imageUrl)
 
                 return (
                   <Link
@@ -1021,41 +1012,6 @@ export default function BottlesPage() {
                       }}
                     >
                       <Stack gap="sm">
-                        {thumb ? (
-                          <Box
-                            style={{
-                              position: 'relative',
-                              width: '100%',
-                              aspectRatio: '1 / 1',
-                              borderRadius: 8,
-                              overflow: 'hidden',
-                              background: 'var(--color-cream)',
-                            }}
-                          >
-                            <Image
-                              src={thumb}
-                              alt={product.name}
-                              fill
-                              sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 33vw"
-                              style={{ objectFit: 'cover' }}
-                            />
-                          </Box>
-                        ) : (
-                          <Box
-                            style={{
-                              width: '100%',
-                              aspectRatio: '1 / 1',
-                              borderRadius: 8,
-                              background: 'var(--color-cream)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: 'var(--color-beige)',
-                            }}
-                          >
-                            <IconBottle size={64} />
-                          </Box>
-                        )}
                         <Group justify="space-between" align="flex-start">
                           <div style={{ flex: 1 }}>
                             <Text
