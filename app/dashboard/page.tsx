@@ -60,7 +60,7 @@ export default async function DashboardPage() {
   const isNewUser = totalBottles === 0 && stashStats.length === 0
 
   return (
-    <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)' }}>
+    <Box className="page-shell">
       <Container size="xl" py="xl">
         <Stack gap="xl">
           {/* Welcome Header */}

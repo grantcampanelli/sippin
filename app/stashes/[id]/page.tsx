@@ -214,7 +214,7 @@ export default function StashDetailPage() {
 
   if (status === 'loading' || loading || !stash) {
     return (
-      <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Box className="page-shell-center">
         <Loader size="lg" color="wine" />
       </Box>
     )
@@ -340,7 +340,7 @@ export default function StashDetailPage() {
     (stash.shelves[0].name === 'Default Shelf' || stash.shelves[0].name === 'Main Shelf')
 
   return (
-    <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)' }}>
+    <Box className="page-shell">
       <Container size="xl" py="xl">
         <Stack gap="xl">
           <Card 

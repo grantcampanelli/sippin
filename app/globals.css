@@ -1,7 +1,4 @@
 :root {
-  --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-playfair: 'Playfair Display', Georgia, serif;
-  
   --color-wine: #7f1d1d;
   --color-wine-light: #c92a2a;
   --color-burgundy: #6b1a1a;
@@ -11,10 +8,13 @@
   --color-beige: #f5f1e8;
   --color-brown: #3d2817;
   --color-gold: #d4af37;
-  
+
   --gradient-wine: linear-gradient(135deg, #7f1d1d 0%, #a61e1e 100%);
   --gradient-amber: linear-gradient(135deg, #ffbf0a 0%, #ffcc3d 100%);
   --gradient-warm: linear-gradient(135deg, #faf8f3 0%, #f5f1e8 100%);
+
+  /* Kept in sync with the explicit height on <nav> in Navigation.tsx. */
+  --nav-height: 64px;
 }
 
 * {
@@ -25,21 +25,45 @@ body {
   color: var(--color-brown);
   background: var(--color-cream);
   min-height: 100vh;
-  font-family: var(--font-inter);
+  /* next/font injects --font-inter as a CSS variable on body; use it here
+     rather than a literal 'Inter' font-family so the preloaded font wins. */
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-playfair);
+  font-family: var(--font-playfair), Georgia, serif;
   color: var(--color-burgundy);
   font-weight: 600;
 }
 
-/* Smooth scrolling */
 html {
   scroll-behavior: smooth;
 }
 
-/* Custom scrollbar */
+/* Shared page wrapper — replaces the 29 copies of
+   `minHeight: calc(100vh - 80px)` inlined across pages. Uses 100dvh so
+   iOS Safari's collapsing URL bar doesn't create a dead strip. */
+.page-shell {
+  min-height: calc(100dvh - var(--nav-height));
+  background: var(--color-cream);
+}
+
+.page-shell-center {
+  min-height: calc(100dvh - var(--nav-height));
+  background: var(--color-cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-shell-form {
+  min-height: calc(100dvh - var(--nav-height));
+  background: var(--color-cream);
+  display: flex;
+  align-items: center;
+}
+
+/* Custom scrollbar (WebKit only — Firefox gets defaults). */
 ::-webkit-scrollbar {
   width: 10px;
 }
@@ -56,4 +80,3 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-burgundy);
 }
-

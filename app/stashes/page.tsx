@@ -95,7 +95,7 @@ export default function StashesPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Box className="page-shell-center">
         <Loader size="lg" color="wine" />
       </Box>
     )
@@ -105,7 +105,7 @@ export default function StashesPage() {
   const displayedStashes = stashes
 
   return (
-    <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)' }}>
+    <Box className="page-shell">
       <Container size="xl" py="xl">
         <Group justify="space-between" mb="xl">
           <div>

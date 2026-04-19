@@ -21,7 +21,7 @@ export default async function ResetPasswordPage({
 
   if (!token || !email) {
     return (
-      <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center' }}>
+      <Box className="page-shell-form">
         <Container size={420} py={40}>
           <Title ta="center" mb="xl" style={{ color: 'var(--color-burgundy)' }}>
             Reset Password
@@ -57,7 +57,7 @@ export default async function ResetPasswordPage({
 
   if (!verificationToken || verificationToken.expires < new Date()) {
     return (
-      <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center' }}>
+      <Box className="page-shell-form">
         <Container size={420} py={40}>
           <Title ta="center" mb="xl" style={{ color: 'var(--color-burgundy)' }}>
             Reset Password
@@ -82,7 +82,7 @@ export default async function ResetPasswordPage({
   }
 
   return (
-    <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center' }}>
+    <Box className="page-shell-form">
       <Container size={420} py={40}>
         <Title ta="center" mb="xl" style={{ color: 'var(--color-burgundy)' }}>
           Reset Password

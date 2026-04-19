@@ -669,7 +669,7 @@ export default function BottlesPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Box className="page-shell-center">
         <Loader size="lg" color="wine" />
       </Box>
     )
@@ -679,7 +679,7 @@ export default function BottlesPage() {
   const activeCount = bottles.filter((b) => !b.finished).length
 
   return (
-    <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)' }}>
+    <Box className="page-shell">
       <Container size="xl" py="xl">
         <Stack gap="xl">
           {/* Header */}

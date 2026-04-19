@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter, Playfair_Display } from 'next/font/google'
 import { MantineProvider, ColorSchemeScript, createTheme } from '@mantine/core'
 import { Notifications } from '@mantine/notifications'
@@ -71,6 +71,12 @@ const theme = createTheme({
 export const metadata: Metadata = {
   title: 'Sippin',
   description: 'Track and manage your beverage collection',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({

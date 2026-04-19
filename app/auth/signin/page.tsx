@@ -19,7 +19,7 @@ export default async function SignInPage({
   const passwordReset = params.passwordReset === 'true'
 
   return (
-    <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center' }}>
+    <Box className="page-shell-form">
       <Container size={420} py={40}>
         <Title ta="center" mb="xl" style={{ color: 'var(--color-burgundy)' }}>
           Sign In

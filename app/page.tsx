@@ -8,7 +8,7 @@ export default async function Home() {
   const session = await getServerSession(authOptions)
 
   return (
-    <Box style={{ minHeight: 'calc(100vh - 80px)' }}>
+    <Box style={{ minHeight: 'calc(100dvh - var(--nav-height))' }}>
       {/* Hero Section */}
       <Box
         style={{

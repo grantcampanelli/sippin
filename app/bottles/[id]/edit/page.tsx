@@ -224,7 +224,7 @@ export default function EditBottlePage() {
 
   if (status === 'loading' || loading) {
     return (
-      <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Box className="page-shell-center">
         <Loader size="lg" color="wine" />
       </Box>
     )
@@ -236,7 +236,7 @@ export default function EditBottlePage() {
 
   if (!bottle) {
     return (
-      <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Box className="page-shell-center">
         <Alert icon={<IconAlertCircle size={16} />} color="red" title="Bottle not found">
           The bottle you're looking for doesn't exist or you don't have permission to access it.
         </Alert>
@@ -252,7 +252,7 @@ export default function EditBottlePage() {
   }
 
   return (
-    <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)' }}>
+    <Box className="page-shell">
       <Container size="md" py="xl">
         <Group mb="xl">
           <Link href={`/bottles/${id}`} style={{ textDecoration: 'none' }}>

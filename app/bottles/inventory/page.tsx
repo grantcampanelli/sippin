@@ -142,7 +142,7 @@ export default function BottleInventoryPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Box className="page-shell-center">
         <Loader size="lg" color="wine" />
       </Box>
     )
@@ -153,7 +153,7 @@ export default function BottleInventoryPage() {
   const totalValue = filteredInventory.reduce((sum, item) => sum + item.totalValue, 0)
 
   return (
-    <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)' }}>
+    <Box className="page-shell">
       <Container size="xl" py="xl">
         <Stack gap="xl">
           {/* Header */}

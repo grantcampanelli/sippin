@@ -278,7 +278,7 @@ export default function BottleDetailPage() {
 
   if (status === 'loading' || loading || !bottle) {
     return (
-      <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Box className="page-shell-center">
         <Loader size="lg" color="wine" />
       </Box>
     )
@@ -305,7 +305,7 @@ export default function BottleDetailPage() {
   }
 
   return (
-    <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)' }}>
+    <Box className="page-shell">
       <Container size="md" py="xl">
         <Group mb="xl" justify="flex-end">
           <Group gap="sm">

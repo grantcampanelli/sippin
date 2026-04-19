@@ -589,7 +589,7 @@ export default function EditStashPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Box className="page-shell-center">
         <Loader size="lg" color="wine" />
       </Box>
     )
@@ -601,7 +601,7 @@ export default function EditStashPage() {
 
   if (!stash) {
     return (
-      <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Box className="page-shell-center">
         <Alert icon={<IconAlertCircle size={16} />} color="red" title="Stash not found">
           The stash you're looking for doesn't exist or you don't have permission to access it.
         </Alert>
@@ -610,7 +610,7 @@ export default function EditStashPage() {
   }
 
   return (
-    <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)' }}>
+    <Box className="page-shell">
       <Container size="md" py="xl">
         <Group mb="xl">
           <Link href={`/stashes/${id}`} style={{ textDecoration: 'none' }}>
