@@ -16,7 +16,6 @@ import {
   Switch,
   Box,
   Loader,
-  Center,
   Button,
   Modal,
   Select,

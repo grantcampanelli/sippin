@@ -3,12 +3,12 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { prisma } from '@/lib/prisma'
-import { 
-  IconBottle, 
-  IconArrowRight, 
-  IconGlass, 
-  IconCurrencyDollar, 
+import { getUserStats } from '@/lib/stats'
+import {
+  IconBottle,
+  IconArrowRight,
+  IconGlass,
+  IconCurrencyDollar,
   IconTrendingUp,
   IconGlassFull,
   IconBottleFilled,
@@ -18,22 +18,6 @@ import {
 } from '@tabler/icons-react'
 import { WelcomeCard } from '@/components/dashboard/WelcomeCard'
 
-async function getStats(userId: string) {
-  const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/stats`, {
-    headers: {
-      'Cookie': `next-auth.session-token=${userId}`
-    },
-    cache: 'no-store'
-  })
-  
-  if (!response.ok) {
-    // Fallback to basic stats
-    return null
-  }
-  
-  return response.json()
-}
-
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
 
@@ -41,117 +25,39 @@ export default async function DashboardPage() {
     redirect('/auth/signin')
   }
 
-  // Fetch stats directly using prisma
-  const bottles = await prisma.bottle.findMany({
-    where: { userId: session.user.id },
-    include: {
-      product: {
-        include: {
-          brand: true,
-          wineData: true,
-          spiritData: true
-        }
-      },
-      shelfItem: {
-        include: {
-          shelf: {
-            include: {
-              stash: true
-            }
-          }
-        }
-      }
-    }
-  })
+  const stats = await getUserStats(session.user.id)
 
-  const stashes = await prisma.stash.findMany({
-    where: { userId: session.user.id },
-    include: {
-      shelves: {
-        include: {
-          _count: {
-            select: { shelfItems: true }
-          }
-        }
-      }
-    }
-  })
+  const {
+    overview: { totalBottles, activeBottles, finishedBottles, openBottles },
+    types: { wine: wineCount, spirit: spiritCount },
+    financial: { totalInvestment, averagePrice, mostExpensive: mostExpensiveAll },
+    topBrands: topBrandsAll,
+    stashStats,
+    wineStats,
+    spiritStats,
+    recentActivity: { addedLast30Days: recentlyAdded, finishedLast30Days: recentlyFinished },
+  } = stats
 
-  // Calculate stats
-  const totalBottles = bottles.length
-  const finishedBottles = bottles.filter(b => b.finished).length
-  const activeBottles = totalBottles - finishedBottles
-  const openBottles = bottles.filter(b => b.openDate && !b.finished).length
+  // Dashboard shows top 3 most-expensive; stats lib returns top 5
+  const mostExpensive = mostExpensiveAll.slice(0, 3)
 
-  const wineBottles = bottles.filter(b => b.product.brand.type === 'WINE' && !b.finished)
-  const spiritBottles = bottles.filter(b => b.product.brand.type === 'SPIRIT' && !b.finished)
+  // Preserve tuple shape used by the existing JSX below
+  const topBrands: Array<[string, number]> = topBrandsAll.map((b) => [b.name, b.count])
 
-  const totalInvestment = bottles
-    .filter(b => b.purchasePrice && !b.finished)
-    .reduce((sum, b) => sum + (b.purchasePrice || 0), 0)
-  
-  const averagePrice = activeBottles > 0 && totalInvestment > 0
-    ? totalInvestment / bottles.filter(b => b.purchasePrice && !b.finished).length
-    : 0
-
-  const mostExpensive = bottles
-    .filter(b => b.purchasePrice && !b.finished)
-    .sort((a, b) => (b.purchasePrice || 0) - (a.purchasePrice || 0))
-    .slice(0, 3)
-
-  // Brand distribution
-  const brandCounts = bottles
-    .filter(b => !b.finished)
-    .reduce((acc, bottle) => {
-      const brandName = bottle.product.brand.name
-      acc[brandName] = (acc[brandName] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
-
-  const topBrands = Object.entries(brandCounts)
+  const topSpiritStyles: Array<[string, number]> = Object.entries(spiritStats?.byStyle ?? {})
     .sort(([, a], [, b]) => b - a)
-    .slice(0, 5)
-
-  // Spirit stats
-  const spiritsByStyle = spiritBottles
-    .filter(b => b.product.spiritData?.style)
-    .reduce((acc, bottle) => {
-      const style = bottle.product.spiritData?.style || 'Other'
-      acc[style] = (acc[style] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
-
-  const topSpiritStyles = Object.entries(spiritsByStyle)
+    .slice(0, 3)
+  const topWineStyles: Array<[string, number]> = Object.entries(wineStats?.byStyle ?? {})
     .sort(([, a], [, b]) => b - a)
     .slice(0, 3)
 
-  // Wine stats  
-  const winesByStyle = wineBottles
-    .filter(b => b.product.wineData?.style)
-    .reduce((acc, bottle) => {
-      const style = bottle.product.wineData?.style || 'Other'
-      acc[style] = (acc[style] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
-
-  const topWineStyles = Object.entries(winesByStyle)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 3)
-
-  // Recent activity
-  const now = new Date()
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-  const recentlyAdded = bottles.filter(
-    b => new Date(b.createdAt) > thirtyDaysAgo
-  ).length
-  const recentlyFinished = bottles.filter(
-    b => b.finishDate && new Date(b.finishDate) > thirtyDaysAgo
-  ).length
+  // Active bottle counts by type — preserved as object shape so existing JSX ({wineBottles.length}) works
+  const wineBottles = { length: wineCount }
+  const spiritBottles = { length: spiritCount }
 
   const completionRate = totalBottles > 0 ? (finishedBottles / totalBottles) * 100 : 0
 
-  // Check if user is new (no bottles and no stashes)
-  const isNewUser = bottles.length === 0 && stashes.length === 0
+  const isNewUser = totalBottles === 0 && stashStats.length === 0
 
   return (
     <Box style={{ minHeight: 'calc(100vh - 80px)', background: 'var(--color-cream)' }}>
@@ -564,7 +470,7 @@ export default async function DashboardPage() {
           )}
 
           {/* Storage Overview */}
-          {stashes.length > 0 && (
+          {stashStats.length > 0 && (
             <Card padding="xl" radius="md" withBorder style={{ borderColor: 'var(--color-beige)', background: 'white' }}>
               <Group justify="space-between" mb="lg">
                 <Title order={3} style={{ color: 'var(--color-burgundy)' }}>
@@ -580,52 +486,46 @@ export default async function DashboardPage() {
                 </Link>
               </Group>
               <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
-                {stashes.map((stash) => {
-                  const bottleCount = stash.shelves.reduce(
-                    (sum, shelf) => sum + shelf._count.shelfItems,
-                    0
-                  )
-                  return (
-                    <Link 
-                      key={stash.id} 
-                      href={`/stashes/${stash.id}`}
-                      style={{ textDecoration: 'none' }}
+                {stashStats.map((stash) => (
+                  <Link
+                    key={stash.id}
+                    href={`/stashes/${stash.id}`}
+                    style={{ textDecoration: 'none' }}
+                  >
+                    <Card
+                      padding="lg"
+                      radius="md"
+                      withBorder
+                      style={{
+                        borderColor: 'var(--color-beige)',
+                        transition: 'all 0.2s',
+                        cursor: 'pointer',
+                        height: '100%'
+                      }}
                     >
-                      <Card
-                        padding="lg"
-                        radius="md"
-                        withBorder
-                        style={{ 
-                          borderColor: 'var(--color-beige)',
-                          transition: 'all 0.2s',
-                          cursor: 'pointer',
-                          height: '100%'
-                        }}
-                      >
-                        <Stack gap="sm">
-                          <Text fw={600} size="lg" style={{ color: 'var(--color-burgundy)' }}>
-                            {stash.name}
-                          </Text>
-                          <Text size="sm" c="dimmed">{stash.location}</Text>
-                          <Group gap="md" mt="xs">
-                            <Box>
-                              <Text size="xs" c="dimmed">Bottles</Text>
-                              <Text fw={600} size="lg" style={{ color: 'var(--color-wine)' }}>
-                                {bottleCount}
-                              </Text>
-                            </Box>
-                            <Box>
-                              <Text size="xs" c="dimmed">Shelves</Text>
-                              <Text fw={600} size="lg" style={{ color: 'var(--color-amber)' }}>
-                                {stash.shelves.length}
-                              </Text>
-                            </Box>
-                          </Group>
-                        </Stack>
-                      </Card>
-                    </Link>
-                  )
-                })}
+                      <Stack gap="sm">
+                        <Text fw={600} size="lg" style={{ color: 'var(--color-burgundy)' }}>
+                          {stash.name}
+                        </Text>
+                        <Text size="sm" c="dimmed">{stash.location}</Text>
+                        <Group gap="md" mt="xs">
+                          <Box>
+                            <Text size="xs" c="dimmed">Bottles</Text>
+                            <Text fw={600} size="lg" style={{ color: 'var(--color-wine)' }}>
+                              {stash.bottleCount}
+                            </Text>
+                          </Box>
+                          <Box>
+                            <Text size="xs" c="dimmed">Shelves</Text>
+                            <Text fw={600} size="lg" style={{ color: 'var(--color-amber)' }}>
+                              {stash.shelfCount}
+                            </Text>
+                          </Box>
+                        </Group>
+                      </Stack>
+                    </Card>
+                  </Link>
+                ))}
               </SimpleGrid>
             </Card>
           )}

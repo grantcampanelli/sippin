@@ -211,6 +211,7 @@ model Bottle {
   
   @@index([userId])
   @@index([userId, finished])
+  @@index([userId, productId])
   @@index([productId])
   @@index([finished])
   @@index([purchaseDate])

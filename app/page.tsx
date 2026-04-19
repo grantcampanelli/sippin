@@ -2,7 +2,6 @@ import { Container, Title, Text, Button, Stack, Group, Box, SimpleGrid, Card } f
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Link from 'next/link'
-import Image from 'next/image'
 import { IconBottle, IconTemperature } from '@tabler/icons-react'
 
 export default async function Home() {

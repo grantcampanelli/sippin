@@ -2,96 +2,75 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
+
+type AggRow = {
+  productId: string
+  total: bigint
+  active: bigint
+  finished: bigint
+  totalValue: number | null
+  avgRating: number | null
+}
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const searchParams = request.nextUrl.searchParams
-    const includeFinished = searchParams.get('includeFinished') === 'true'
+    const includeFinished = request.nextUrl.searchParams.get('includeFinished') === 'true'
+    const userId = session.user.id
 
-    // Get all bottles for the user
-    const bottles = await prisma.bottle.findMany({
-      where: {
-        userId: session.user.id,
-        ...(includeFinished ? {} : { finished: false })
-      },
-      include: {
-        product: {
-          include: {
-            brand: true,
-            wineData: true,
-            spiritData: true
-          }
-        }
-      }
+    const finishedFilter = includeFinished
+      ? Prisma.empty
+      : Prisma.sql` AND "finished" = false`
+
+    const rows = await prisma.$queryRaw<AggRow[]>`
+      SELECT
+        "productId",
+        COUNT(*)::bigint AS total,
+        COUNT(*) FILTER (WHERE NOT "finished")::bigint AS active,
+        COUNT(*) FILTER (WHERE "finished")::bigint AS finished,
+        SUM("purchasePrice")::float AS "totalValue",
+        AVG("rating")::float AS "avgRating"
+      FROM "Bottle"
+      WHERE "userId" = ${userId}${finishedFilter}
+      GROUP BY "productId"
+    `
+
+    if (rows.length === 0) {
+      return NextResponse.json([])
+    }
+
+    const products = await prisma.product.findMany({
+      where: { id: { in: rows.map((r) => r.productId) } },
+      include: { brand: true, wineData: true, spiritData: true },
     })
+    const productMap = new Map(products.map((p) => [p.id, p]))
 
-    // Aggregate bottles by product
-    const productMap = new Map<string, {
-      product: any
-      totalCount: number
-      activeCount: number
-      finishedCount: number
-      bottles: any[]
-      totalValue: number
-      averageRating: number | null
-    }>()
+    const aggregated = rows
+      .map((row) => ({
+        product: productMap.get(row.productId),
+        totalCount: Number(row.total),
+        activeCount: Number(row.active),
+        finishedCount: Number(row.finished),
+        totalValue: row.totalValue ?? 0,
+        averageRating: row.avgRating,
+      }))
+      .filter((entry) => entry.product !== undefined)
+      .sort(
+        (a, b) => b.activeCount - a.activeCount || b.totalCount - a.totalCount,
+      )
 
-    bottles.forEach(bottle => {
-      const productId = bottle.productId
-      
-      if (!productMap.has(productId)) {
-        productMap.set(productId, {
-          product: bottle.product,
-          totalCount: 0,
-          activeCount: 0,
-          finishedCount: 0,
-          bottles: [],
-          totalValue: 0,
-          averageRating: null
-        })
-      }
-
-      const entry = productMap.get(productId)!
-      entry.totalCount++
-      entry.bottles.push(bottle)
-      
-      if (bottle.finished) {
-        entry.finishedCount++
-      } else {
-        entry.activeCount++
-      }
-
-      if (bottle.purchasePrice) {
-        entry.totalValue += bottle.purchasePrice
-      }
-    })
-
-    // Calculate average ratings
-    productMap.forEach(entry => {
-      const ratedBottles = entry.bottles.filter(b => b.rating !== null)
-      if (ratedBottles.length > 0) {
-        const sum = ratedBottles.reduce((acc, b) => acc + b.rating!, 0)
-        entry.averageRating = sum / ratedBottles.length
-      }
-    })
-
-    // Convert map to array and sort by active count (descending)
-    const aggregatedProducts = Array.from(productMap.values())
-      .sort((a, b) => b.activeCount - a.activeCount || b.totalCount - a.totalCount)
-      .map(({ bottles, ...rest }) => rest) // Remove bottles array from response for cleaner data
-
-    return NextResponse.json(aggregatedProducts)
+    return NextResponse.json(aggregated)
   } catch (error) {
     console.error('Error fetching bottle inventory:', error)
     return NextResponse.json(
       { error: 'Failed to fetch bottle inventory' },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
