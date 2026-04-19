@@ -210,6 +210,16 @@ No dependency needed — a 60-request-per-minute in-memory token bucket keyed by
 ### P3. NextAuth v4 → v5 upgrade
 Not urgent but on the horizon. v5 has breaking changes in the adapter + the callback shape. Good candidate for a dedicated branch with its own PR.
 
+### P5. Reconcile auth drift: NextAuth (local) vs Stack Auth / Neon Auth (prod)
+`.env` local uses `NEXTAUTH_SECRET` + Google OAuth via `@next-auth/prisma-adapter`. Prod has `STACK_SECRET_SERVER_KEY`, `STACK_PROJECT_ID`, and a `neon_auth.users_sync` table — i.e. prod is wired for Stack Auth / Neon Auth, not NextAuth. This is a real problem: any auth-adjacent code path tested locally runs against a different identity system than prod, so sign-in/out, session shape, and `session.user.id` can diverge silently.
+
+**Decision you need to make** (not something I can pick for you):
+- **Keep NextAuth.** Remove the Stack/Neon Auth env vars from prod, stop whatever is syncing into `neon_auth.users_sync`, and ensure the `User` model remains the source of truth.
+- **Switch to Stack Auth / Neon Auth.** Replace `lib/auth.ts` + `getServerSession` calls (~14 files use it) with Stack's equivalents, wire the `users_sync` rows into your app's `User` model or replace references, and delete NextAuth deps.
+- **Dual-stack indefinitely.** Viable only if you build a thin abstraction over `getServerSession` that picks the right backend per environment — more code, more risk, not recommended.
+
+Either of the first two is a dedicated branch. The drift was invisible until we pulled prod env vars during the backup work.
+
 ### P4. Move dashboard page to a Server Component that streams
 The dashboard is already a Server Component, but it blocks on `getUserStats()` before rendering. Wrap each card in `<Suspense>` with a skeleton and split the lib into sub-functions so fast numbers (totals) paint before slow ones (raw SQL groupBys). Next.js 16 handles this cleanly.
 
