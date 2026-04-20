@@ -754,9 +754,16 @@ export default function StashDetailPage() {
                       )}
 
                       {/* Bottles List/Table */}
-                      {shelf.shelfItems.length > 0 && (
+                      {shelf.shelfItems.length > 0 && (() => {
+                        // Show the REMAINING column only when at least one non-wine bottle has a value.
+                        // Hide on phones (<xs) where horizontal budget is tight; keep everywhere else
+                        // so the header and every row stay column-aligned regardless of bottle type.
+                        const showRemainingColumn = shelf.shelfItems.some(
+                          (i) => i.bottle.product.brand.type !== 'WINE' && i.bottle.amountRemaining !== null
+                        )
+                        return (
                         <Collapse in={isExpanded || !hasMany}>
-                          <Box 
+                          <Box
                             style={{
                               border: '1px solid var(--color-beige)',
                               borderRadius: '8px',
@@ -764,10 +771,11 @@ export default function StashDetailPage() {
                             }}
                           >
                             {/* Table Header */}
-                            <Group 
-                              gap="md" 
+                            <Group
+                              gap="md"
                               p="sm"
-                              style={{ 
+                              wrap="nowrap"
+                              style={{
                                 background: 'var(--color-cream)',
                                 borderBottom: '1px solid var(--color-beige)'
                               }}
@@ -778,8 +786,14 @@ export default function StashDetailPage() {
                               <Text size="xs" fw={600} c="dimmed" visibleFrom="sm" style={{ width: '200px' }}>
                                 DETAILS
                               </Text>
-                              {shelf.shelfItems.some(item => item.bottle.product.brand.type !== 'WINE' && item.bottle.amountRemaining !== null) && (
-                                <Text size="xs" fw={600} c="dimmed" style={{ width: '100px', textAlign: 'center' }}>
+                              {showRemainingColumn && (
+                                <Text
+                                  size="xs"
+                                  fw={600}
+                                  c="dimmed"
+                                  visibleFrom="xs"
+                                  style={{ width: '100px', textAlign: 'center' }}
+                                >
                                   REMAINING
                                 </Text>
                               )}
@@ -793,16 +807,18 @@ export default function StashDetailPage() {
                               {shelf.shelfItems.map((item, index) => {
                                 const bottle = item.bottle
                                 const product = bottle.product
-                                
+                                const isWine = product.brand.type === 'WINE'
+
                                 return (
-                                  <Link 
-                                    key={item.id} 
-                                    href={`/bottles/${bottle.id}`} 
+                                  <Link
+                                    key={item.id}
+                                    href={`/bottles/${bottle.id}`}
                                     style={{ textDecoration: 'none' }}
                                   >
                                     <Group
                                       gap="md"
                                       p="sm"
+                                      wrap="nowrap"
                                       style={{
                                         borderTop: index > 0 ? '1px solid var(--color-beige)' : 'none',
                                         background: 'white',
@@ -833,14 +849,17 @@ export default function StashDetailPage() {
                                         </Text>
                                       </Box>
 
-                                      {/* Remaining (only for non-wine bottles) */}
-                                      {product.brand.type !== 'WINE' && shelf.shelfItems.some(item => item.bottle.product.brand.type !== 'WINE' && item.bottle.amountRemaining !== null) && (
-                                        <Box style={{ width: '100px' }}>
-                                          {bottle.amountRemaining !== null ? (
-                                            <Group gap="xs" justify="center">
-                                              <Progress 
-                                                value={bottle.amountRemaining} 
-                                                size="xs" 
+                                      {/* Remaining — always render the cell when the column is on,
+                                          so row widths match the header. Wine rows get an em dash. */}
+                                      {showRemainingColumn && (
+                                        <Box visibleFrom="xs" style={{ width: '100px' }}>
+                                          {isWine || bottle.amountRemaining === null ? (
+                                            <Text size="xs" c="dimmed" ta="center">—</Text>
+                                          ) : (
+                                            <Group gap="xs" justify="center" wrap="nowrap">
+                                              <Progress
+                                                value={bottle.amountRemaining}
+                                                size="xs"
                                                 color="wine"
                                                 style={{ flex: 1 }}
                                               />
@@ -848,8 +867,6 @@ export default function StashDetailPage() {
                                                 {bottle.amountRemaining}%
                                               </Text>
                                             </Group>
-                                          ) : (
-                                            <Text size="xs" c="dimmed" ta="center">-</Text>
                                           )}
                                         </Box>
                                       )}
@@ -871,7 +888,8 @@ export default function StashDetailPage() {
                             </Stack>
                           </Box>
                         </Collapse>
-                      )}
+                        )
+                      })()}
 
                       {/* Collapsed state message */}
                       {!isExpanded && hasMany && (

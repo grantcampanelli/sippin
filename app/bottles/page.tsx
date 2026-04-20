@@ -15,7 +15,6 @@ import {
   TextInput,
   Switch,
   Box,
-  Loader,
   Button,
   Modal,
   Select,
@@ -23,6 +22,7 @@ import {
   ActionIcon,
   Autocomplete,
   Divider,
+  Skeleton,
 } from '@mantine/core'
 import { IconSearch, IconBottle, IconFilter, IconPlus, IconX, IconCamera, IconMapPin, IconStack2, IconDownload } from '@tabler/icons-react'
 import { useForm } from '@mantine/form'
@@ -668,9 +668,34 @@ export default function BottlesPage() {
   }
 
   if (status === 'loading' || loading) {
+    // Render a layout-matching skeleton so data arrival doesn't shift the page.
     return (
-      <Box className="page-shell-center">
-        <Loader size="lg" color="wine" />
+      <Box className="page-shell">
+        <Container size="xl" py="xl">
+          <Stack gap="xl">
+            <Group justify="space-between" align="flex-start">
+              <Stack gap="sm">
+                <Skeleton height={40} width={200} />
+                <Skeleton height={20} width={300} />
+              </Stack>
+              <Group gap="sm">
+                <Skeleton height={44} width={120} radius="md" />
+                <Skeleton height={44} width={140} radius="md" />
+                <Skeleton height={44} width={130} radius="md" />
+              </Group>
+            </Group>
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <Skeleton height={100} radius="md" />
+              <Skeleton height={100} radius="md" />
+            </SimpleGrid>
+            <Skeleton height={130} radius="md" />
+            <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} height={180} radius="md" />
+              ))}
+            </SimpleGrid>
+          </Stack>
+        </Container>
       </Box>
     )
   }
